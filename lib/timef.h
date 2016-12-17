@@ -8,6 +8,11 @@
 #define GOOD_TOD_DELAY 3
 #define TIME_T_MAX LONG_MAX
 #define LIB_CLOCK CLOCK_REALTIME
+#define TARGET_AHEAD 0
+#define TARGET_OK 1
+#define TARGET_BEHIND 2
+#define MONTH_NUM 12
+#define WDAY_NUM 7
 //CLOCK_PROCESS_CPUTIME_ID
 
 # define timespeccmp(a, b, CMP) 						      \
@@ -56,6 +61,7 @@ typedef struct {
     int ready;
 } Ton;
 
+extern struct timespec getCurrentTime();
 
 extern void delayUsBusy(unsigned int td) ;
 
@@ -75,17 +81,23 @@ extern time_t getTimePassed(const Ton *t) ;
 
 extern struct timespec getTimePassed_ts(struct timespec t);
 
+extern struct timespec getTimeRest_ts(struct timespec t_interval, struct timespec t_start);
+
 extern int toyHasCome(const TOY *current,const  TOY *wanted) ;
 
-extern int todHasCome(int target, int current) ;
+extern int todHasCome(long int target, long int current) ;
 
 extern int getTimeRestS(int interval, Ton *t) ;
+
+extern int timeHasPassed(struct timespec interval, struct timespec start, struct timespec now);
 
 extern void changeTimeT(time_t *slave, time_t change) ;
 
 extern void changeInt(int *v, int inc) ;
 
 extern int ton(time_t interval, Ton *t) ;
+
+extern long int getCurrTOD();
 
 
 #endif 

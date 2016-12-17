@@ -5,13 +5,13 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: UDP gateway for PCF8574
+# Short-Description: UDP discrete input-output gateway
 ### END INIT INFO
 
 # Author: Arinichev Nikolay <arinichev_n@mail.ru>
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="UDP gateway for PCF8574"
+DESC="UDP discrete input-output gateway"
 NAME=gwu74
 DAEMON=/usr/sbin/$NAME
 DAEMON_ARGS=""

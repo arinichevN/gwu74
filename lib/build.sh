@@ -53,5 +53,7 @@ function for_a20 {
     build $PLATFORM_A20 $NONE $PSQL_I_DIR_A20 $PSQL_L_DIR_A20
 }
 
-f=$1
-${f}
+#f=$1
+#${f}
+
+build $1 $2 $3 $4

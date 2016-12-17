@@ -1,5 +1,24 @@
 #include "config.h"
 
+int config_getStrValFromTbl(PGconn *db_conn, const char *id, char *value, const char *tbl, size_t value_size) {
+    PGresult *r;
+    char q[LINE_SIZE];
+    snprintf(q, sizeof q, "select value from public.%s where id='%s'", tbl, id);
+    if ((r = dbGetDataT(db_conn, q, q)) == NULL) {
+        return 0;
+    }
+    if (PQntuples(r) == 1) {
+        memcpy(value, PQgetvalue(r, 0, 0), value_size);
+        PQclear(r);
+        return 1;
+    }
+#ifdef MODE_DEBUG
+    fputs("config_getPidPath: one tuple expected\n", stderr);
+#endif
+    PQclear(r);
+    return 0;
+}
+
 int config_getBufSize(PGconn *db_conn, const char *id, size_t *value) {
     PGresult *r;
     char q[LINE_SIZE];
@@ -114,12 +133,35 @@ int config_getDbConninfo(PGconn *db_conn, const char *id, char *value, size_t va
     return 0;
 }
 
+int config_getLockKey(PGconn *db_conn, const char *id, char *value, size_t value_size) {
+    PGresult *r;
+    char q[LINE_SIZE];
+    size_t i;
+    for (i = 0; i < value_size; i++) {
+        value[i] = '\0';
+    }
+    snprintf(q, sizeof q, "select value from public.lock_key where id='%s'", id);
+    if ((r = dbGetDataT(db_conn, q, q)) == NULL) {
+        return 0;
+    }
+    if (PQntuples(r) == 1) {
+        memcpy(value, PQgetvalue(r, 0, 0), value_size);
+        PQclear(r);
+        return 1;
+    }
+#ifdef MODE_DEBUG
+    fputs("config_getLockKey: one tuple expected\n", stderr);
+#endif
+    PQclear(r);
+    return 0;
+}
+
 static int config_checkPeerList(const PeerList *list) {
     size_t i, j;
     //unique id
     for (i = 0; i < list->length; i++) {
         for (j = i + 1; j < list->length; j++) {
-            if (strcmp(list->item[i].id, list->item[j].id)==0) {
+            if (strcmp(list->item[i].id, list->item[j].id) == 0) {
                 fprintf(stderr, "checkPeerList: id = %s is not unique\n", list->item[i].id);
                 return 0;
             }
@@ -184,6 +226,12 @@ int config_getPeerList(PGconn *db_conn_settings, PGconn *db_conn_peer, char *id_
             }
             list->item[i].addr_size = sizeof list->item[i].addr;
             list->item[i].fd = fd;
+            if (!initMutex(&list->item[i].mutex)) {
+                PQclear(r);
+                free(s1l.item);
+                fprintf(stderr, "config_getPeerList: initMutex() failed for peer with id=%s\n", list->item[i].id);
+                return 0;
+            }
             PQclear(r);
         }
     }

@@ -1,14 +1,37 @@
 #!/bin/bash
 APP=gwu74
+APP_DBG=`printf "%s_dbg" "$APP"`
 INST_DIR=/usr/sbin
 CONF_DIR=/etc/controller
+PID_DIR=/var/run
+
+#lubuntu
+PSQL_I_DIR=-I/usr/include/postgresql
+
+#xubuntu
+#PSQL_I_DIR=-I/opt/PostgreSQL/9.5/include 
+
+PSQL_L_DIR=-L/opt/PostgreSQL/9.5/lib
+
+MODE_DEBUG=-DMODE_DEBUG
+PLATFORM_ALL=-DP_ALL
+PLATFORM_A20=-DP_A20
+NONE=""
 
 function move_bin {
 	([ -d $INST_DIR ] || mkdir $INST_DIR) && \
-	cp bin $INST_DIR/$APP && \
+	cp $APP $INST_DIR/$APP && \
 	chmod a+x $INST_DIR/$APP && \
 	chmod og-w $INST_DIR/$APP && \
 	echo "Your $APP executable file: $INST_DIR/$APP";
+}
+
+function move_bin_dbg {
+	([ -d $INST_DIR ] || mkdir $INST_DIR) && \
+	cp $APP_DBG $INST_DIR/$APP_DBG && \
+	chmod a+x $INST_DIR/$APP_DBG && \
+	chmod og-w $INST_DIR/$APP_DBG && \
+	echo "Your $APP executable file for debugging: $INST_DIR/$APP_DBG";
 }
 
 function move_conf {
@@ -26,54 +49,48 @@ function conf_autostart {
 	echo "Autostart configured";
 }
 
+#    1         2        3     4
+#platform debug_mode psql_I psql_L
+function build {
+	cd lib && \
+	./build.sh $1 $2 $3 $4 && \
+	cd ../ && \
+	gcc -D_REENTRANT $1 $2 main.c -o $5 $3 $4 -L./lib -lpq -lpthread -lpac && \
+	#gcc -D_REENTRANT $1 $2 device/idle.c  device/native.c  device/pcf8574.c  device/mcp23008.c  device/mcp23017.c main.c -o $5 $3 $4 -L./lib -lpq -lpthread -lpac && \
+	echo "Application successfully compiled. Launch command: sudo ./"$5
+}
+
 #builds application for Allwinner A20 CPU
 function for_a20_debug {
-	cd lib && \
-	./build.sh for_a20_debug && \
-	cd ../ && \
-	gcc -D_REENTRANT -DMODE_DEBUG -DP_A20 main.c -o bin -I/usr/include/postgresql -L/opt/PostgreSQL/9.5/lib -L./lib -lpq -lpthread -lpac && \
-	echo "Application $APP successfully installed"
+	build $PLATFORM_A20 $MODE_DEBUG $PSQL_I_DIR $PSQL_L_DIR $APP_DBG
 }
 
 #builds hardware independent application (functionality may be reduced)
 function for_all_debug {
-	cd lib && \
-	./build.sh for_all_debug && \
-	cd ../ && \
-	gcc -D_REENTRANT -DMODE_DEBUG -DDBG main.c -o bin -I/opt/PostgreSQL/9.5/include -L/opt/PostgreSQL/9.5/lib -L./lib -lpq -lpthread -lpac && \
-	echo "Application $APP successfully installed"
+	build $PLATFORM_ALL $MODE_DEBUG $PSQL_I_DIR $PSQL_L_DIR $APP_DBG
 }
 #builds application for Allwinner A20 CPU
 function for_a20 {
-	cd lib && \
-	./build.sh for_a20 && \
-	cd ../ && \
-	gcc -D_REENTRANT -DP_A20 main.c -o bin -I/usr/include/postgresql -L/opt/PostgreSQL/9.5/lib -L./lib -lpq -lpthread -lpac && \
-	move_bin && \
-	move_conf && \
-	conf_autostart && \
-	echo "Application $APP successfully installed"
+	build $PLATFORM_A20 $NONE $PSQL_I_DIR $PSQL_L_DIR $APP && \
+	build $PLATFORM_A20 $MODE_DEBUG $PSQL_I_DIR $PSQL_L_DIR $APP_DBG && \
+	move_bin && move_bin_dbg && move_conf && conf_autostart
 }
 
 #builds hardware independent application (functionality may be reduced)
 function for_all {
-	cd lib && \
-	./build.sh for_all && \
-	cd ../ && \
-	gcc -D_REENTRANT -DDBG main.c -o bin -I/opt/PostgreSQL/9.5/include -L/opt/PostgreSQL/9.5/lib -L./lib -lpq -lpthread -lpac && \
-	move_bin && \
-	move_conf && \
-	conf_autostart && \
-	echo "Application $APP successfully installed"
-}
-#builds hardware independent application (functionality may be reduced)
-function for_test {
-	cd lib && \
-	./build.sh for_all_debug && \
-	cd ../ && \
-	gcc -D_REENTRANT -DMODE_DEBUG -DDBG main.c -o bin -I/opt/PostgreSQL/9.5/include -L/opt/PostgreSQL/9.5/lib -L./lib -lpq -lpthread -lpac && \
-	echo "Application successfully installed. Launch command: sudo ./bin"
+	build $PLATFORM_ALL $NONE $PSQL_I_DIR $PSQL_L_DIR $APP
 }
 
+function test {
+	echo $PLATFORM_ALL $NONE $PSQL_I_DIR $PSQL_L_DIR $APP_DBG
+}
+
+function uninstall {
+	pkill -F $PID_DIR/$APP.pid --signal 9
+	update-rc.d -f $APP remove
+	rm -f $INST_DIR/$APP
+	rm -f $INST_DIR/$APP_DBG
+	rm -f $CONF_DIR/$APP.conf
+}
 f=$1
-${f}
+${f} $2

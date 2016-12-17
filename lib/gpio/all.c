@@ -27,6 +27,10 @@
     int v = pin*pin;
 }
 
+ void pinPUD(int pin, int pud) {
+ ;
+}
+ 
 int checkPin(int pin) {
     return 1;
 }

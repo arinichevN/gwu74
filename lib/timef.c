@@ -1,5 +1,11 @@
 #include "timef.h"
 
+struct timespec getCurrentTime() {
+    struct timespec now;
+    clock_gettime(LIB_CLOCK, &now);
+    return now;
+}
+
 void delayUsBusy(unsigned int td) {
     struct timespec now, interval, end;
     clock_gettime(LIB_CLOCK, &now);
@@ -54,6 +60,14 @@ void getDate(TOY *v_toy, int *wday, int *tod, int *y) {
     *y = current->tm_year + 1900;
 }
 
+long int getCurrTOD() {
+    struct tm *current;
+    time_t now;
+    time(&now);
+    current = localtime(&now);
+    return current->tm_sec + current->tm_min * 60 + current->tm_hour * 3600;
+}
+
 int ton_ts(struct timespec interval, Ton_ts *t) {
     struct timespec now, dif;
     if (!t->ready) {
@@ -83,10 +97,18 @@ time_t getTimePassed(const Ton *t) {
 }
 
 struct timespec getTimePassed_ts(struct timespec t) {
-     struct timespec now, dif;
+    struct timespec now, dif;
     clock_gettime(CLOCK_REALTIME, &now);
     timespecsub(&now, &t, &dif);
     return dif;
+}
+
+struct timespec getTimeRest_ts(struct timespec t_interval, struct timespec t_start) {
+    struct timespec now, out, sum;
+    clock_gettime(CLOCK_REALTIME, &now);
+    timespecadd(&t_interval, &t_start, &sum);
+    timespecsub(&sum, &now, &out);
+    return out;
 }
 
 int toyHasCome(const TOY *current, const TOY *wanted) {
@@ -105,7 +127,7 @@ int toyHasCome(const TOY *current, const TOY *wanted) {
  * 1 - target time has come
  * 2 - target time is behind
  */
-int todHasCome(int target, int current) {
+int todHasCome(long int target, long int current) {
     if (target > current) {
         return 0;
     }
@@ -113,6 +135,15 @@ int todHasCome(int target, int current) {
         return 2;
     }
     return 1;
+}
+
+int timeHasPassed(struct timespec interval, struct timespec start, struct timespec now) {
+    struct timespec dif;
+    timespecsub(&now, &start, &dif);
+    if (timespeccmp(&interval, &dif, <)) {
+        return 1;
+    }
+    return 0;
 }
 
 int getTimeRestS(int interval, Ton *t) {

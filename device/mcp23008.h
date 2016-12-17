@@ -1,0 +1,42 @@
+
+
+#ifndef GWU74_DEV_MCP23008_H
+#define GWU74_DEV_MCP23008_H
+
+#include "../lib/i2c.h"
+
+#define MCP23008_MAX_DEV_NUM 8
+#define MCP23008_DEVICE_PIN_NUM 8
+#define MCP23008_MAX_PIN_NUM 64
+
+
+#define	MCP23x08_IODIR		0x00
+#define	MCP23x08_IPOL		0x01
+#define	MCP23x08_GPINTEN	0x02
+#define	MCP23x08_DEFVAL		0x03
+#define	MCP23x08_INTCON		0x04
+#define	MCP23x08_IOCON		0x05
+#define	MCP23x08_GPPU		0x06
+#define	MCP23x08_INTF		0x07
+#define	MCP23x08_INTCAP		0x08
+#define	MCP23x08_GPIO		0x09
+#define	MCP23x08_OLAT		0x0A
+
+
+#ifndef GWU74_DEV_MCP23x_H
+#define GWU74_DEV_MCP23x_H
+
+#define	IOCON_UNUSED	0x01
+#define	IOCON_INTPOL	0x02
+#define	IOCON_ODR	0x04
+#define	IOCON_HAEN	0x08
+#define	IOCON_DISSLW	0x10
+#define	IOCON_SEQOP	0x20
+#define	IOCON_MIRROR	0x40
+#define	IOCON_BANK_MODE	0x80
+#define	IOCON_INIT	(IOCON_SEQOP)
+
+#endif 
+
+#endif 
+

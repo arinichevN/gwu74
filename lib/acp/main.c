@@ -15,7 +15,7 @@ int acp_initBuf(char *buf, size_t buf_size) {
     return 1;
 }
 
-void acp_parsePackI1(const char *buf, I1List *list, size_t list_max_size) {
+void acp_parsePackI1( char *buf, I1List *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -33,7 +33,7 @@ void acp_parsePackI1(const char *buf, I1List *list, size_t list_max_size) {
     }
 }
 
-void acp_parsePackI2(const char *buf, I2List *list, size_t list_max_size) {
+void acp_parsePackI2( char *buf, I2List *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -52,7 +52,7 @@ void acp_parsePackI2(const char *buf, I2List *list, size_t list_max_size) {
     }
 }
 
-void acp_parsePackI3(const char *buf, I3List *list, size_t list_max_size) {
+void acp_parsePackI3( char *buf, I3List *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -72,7 +72,7 @@ void acp_parsePackI3(const char *buf, I3List *list, size_t list_max_size) {
     }
 }
 
-void acp_parsePackF1(const char *buf, F1List *list, size_t list_max_size) {
+void acp_parsePackF1( char *buf, F1List *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -90,7 +90,7 @@ void acp_parsePackF1(const char *buf, F1List *list, size_t list_max_size) {
     }
 }
 
-void acp_parsePackI1F1(const char *buf, I1F1List *list, size_t list_max_size) {
+void acp_parsePackI1F1( char *buf, I1F1List *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -110,7 +110,7 @@ void acp_parsePackI1F1(const char *buf, I1F1List *list, size_t list_max_size) {
     }
 }
 
-void acp_parsePackS1(const char *buf, S1List *list, size_t list_max_size) {
+void acp_parsePackS1( char *buf, S1List *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -133,7 +133,7 @@ void acp_parsePackS1(const char *buf, S1List *list, size_t list_max_size) {
     }
 }
 
-void acp_parsePackI1S1(const char *buf, I1S1List *list, size_t list_max_size) {
+void acp_parsePackI1S1( char *buf, I1S1List *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -157,7 +157,7 @@ void acp_parsePackI1S1(const char *buf, I1S1List *list, size_t list_max_size) {
     }
 }
 
-void acp_parsePackFTS(const char *buf, FTSList *list, size_t list_max_size) {
+void acp_parsePackFTS( char *buf, FTSList *list, size_t list_max_size) {
     char *buff = buf;
     list->length = 0;
     if (strlen(buff) < ACP_RESP_BUF_SIZE_MIN) {
@@ -172,7 +172,7 @@ void acp_parsePackFTS(const char *buf, FTSList *list, size_t list_max_size) {
             break;
         }
         list->item[list->length].id = id;
-        list->item[list->length].temp = temp;
+        list->item[list->length].value = temp;
         list->item[list->length].tm.tv_sec = tm.tv_sec;
         list->item[list->length].tm.tv_nsec = tm.tv_nsec;
         list->item[list->length].state = state;
@@ -363,7 +363,7 @@ void acp_sendFooter(int8_t crc, Peer *peer) {
     }
 }
 
-int acp_sendBufPack(char *buf, char qnf, const char *cmd_str, size_t buf_size, const Peer *peer) {
+int acp_sendBufPack(char *buf, char qnf,  char *cmd_str, size_t buf_size, const Peer *peer) {
     if (!acp_bufAddHeader(buf, qnf, cmd_str, buf_size)) {
 #ifdef MODE_DEBUG
         fputs("acp_sendBufPack: acp_bufAddHeader() failed\n", stderr);
@@ -427,6 +427,23 @@ int acp_recvOK(Peer *peer, size_t buf_size) {
     return 1;
 }
 
+char acp_recvPing(Peer *peer, size_t buf_size) {
+    char buf[buf_size];
+    if (recvfrom(*(peer->fd), buf, sizeof buf, 0, NULL, NULL) < 0) {
+#ifdef MODE_DEBUG
+        perror("acp_recvPing: recvfrom() error");
+#endif
+        return '\0';
+    }
+    if (!crc_check(buf, sizeof buf)) {
+#ifdef MODE_DEBUG
+        fputs("acp_recvPing: crc_check() failed\n", stderr);
+#endif
+        return '\0';
+    }
+    return buf[1];
+}
+
 int acp_recvFTS(FTSList *list, char qnf, char *cmd, size_t buf_size, size_t list_max_size, int fd) {
     char buf[buf_size];
     if (recvfrom(fd, buf, sizeof buf, 0, NULL, NULL) < 0) {
@@ -460,6 +477,42 @@ int acp_recvFTS(FTSList *list, char qnf, char *cmd, size_t buf_size, size_t list
         return 0;
     }
     acp_parsePackFTS(buf, list, list_max_size);
+    return 1;
+}
+
+int acp_recvI2(I2List *list, char qnf, char *cmd, size_t buf_size, size_t list_max_size, int fd) {
+    char buf[buf_size];
+    if (recvfrom(fd, buf, sizeof buf, 0, NULL, NULL) < 0) {
+#ifdef MODE_DEBUG
+        perror("acp_recvFTS: recvfrom() error");
+#endif
+        return 0;
+    }
+    if (strlen(buf) < ACP_RESP_BUF_SIZE_MIN) {
+#ifdef MODE_DEBUG
+        fputs("acp_recvFTS: not enough data\n", stderr);
+#endif
+        return 0;
+    }
+    if (buf[0] != qnf) {
+#ifdef MODE_DEBUG
+        fputs("acp_recvFTS: bad quantifier\n", stderr);
+#endif
+        return 0;
+    }
+    if (strncmp(&buf[1], cmd, 1) != 0) {
+#ifdef MODE_DEBUG
+        fputs("acp_recvFTS: bad command\n", stderr);
+#endif
+        return 0;
+    }
+    if (!crc_check(buf, sizeof buf)) {
+#ifdef MODE_DEBUG
+        fputs("acp_recvFTS: crc_check() failed\n", stderr);
+#endif
+        return 0;
+    }
+    acp_parsePackI2(buf, list, list_max_size);
     return 1;
 }
 

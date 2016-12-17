@@ -1,0 +1,9 @@
+#ifndef GWU74_DEV_NATIVE_H
+#define GWU74_DEV_NATIVE_H
+
+#define NATIVE_MAX_DEV_NUM 1
+#define NATIVE_DEVICE_PIN_NUM 26
+#define NATIVE_MAX_PIN_NUM 26 
+
+#endif
+

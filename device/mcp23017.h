@@ -1,0 +1,52 @@
+#ifndef GWU74_DEV_MCP23017_H
+#define GWU74_DEV_MCP23017_H
+
+#include "../lib/i2c.h"
+
+#define MCP23017_MAX_DEV_NUM 8
+#define MCP23017_DEVICE_PIN_NUM  16
+#define MCP23017_MAX_PIN_NUM  128
+
+#define	MCP23x17_IODIRA		0x00
+#define	MCP23x17_IPOLA		0x02
+#define	MCP23x17_GPINTENA	0x04
+#define	MCP23x17_DEFVALA	0x06
+#define	MCP23x17_INTCONA	0x08
+#define	MCP23x17_IOCON		0x0A
+#define	MCP23x17_GPPUA		0x0C
+#define	MCP23x17_INTFA		0x0E
+#define	MCP23x17_INTCAPA	0x10
+#define	MCP23x17_GPIOA		0x12
+#define	MCP23x17_OLATA		0x14
+
+#define	MCP23x17_IODIRB		0x01
+#define	MCP23x17_IPOLB		0x03
+#define	MCP23x17_GPINTENB	0x05
+#define	MCP23x17_DEFVALB	0x07
+#define	MCP23x17_INTCONB	0x09
+#define	MCP23x17_IOCONB		0x0B
+#define	MCP23x17_GPPUB		0x0D
+#define	MCP23x17_INTFB		0x0F
+#define	MCP23x17_INTCAPB	0x11
+#define	MCP23x17_GPIOB		0x13
+#define	MCP23x17_OLATB		0x15
+
+
+#ifndef GWU74_DEV_MCP23x_H
+#define GWU74_DEV_MCP23x_H
+
+#define IOCON_UNUSED 0x01
+#define IOCON_INTPOL 0x02
+#define IOCON_ODR 0x04
+#define IOCON_HAEN 0x08
+#define IOCON_DISSLW 0x10
+#define IOCON_SEQOP 0x20
+#define IOCON_MIRROR 0x40
+#define IOCON_BANK_MODE 0x80
+#define IOCON_INIT (IOCON_SEQOP)
+
+#endif 
+
+
+#endif 
+

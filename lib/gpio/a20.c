@@ -5,6 +5,8 @@
 #define MAP_MASK (MAP_SIZE - 1)
 #define BLOCK_SIZE  (4*1024)
 #define A20_GPIO_NUM  64
+#define GPIO_READ(ADDR) *(gpio + (((ADDR) - ((ADDR) & ~MAP_MASK)) >> 2))
+#define GPIO_WRITE(VAL, ADDR) *(gpio + (((ADDR) - ((ADDR) & ~MAP_MASK)) >> 2)) = (VAL)
 
 static volatile uint32_t *gpio;
 
@@ -53,8 +55,7 @@ static int a20_pin_mask[9][32] = //[BANK]  [INDEX]
     {0, 1, -1, 3, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, -1, 16, 17, 18, 19, 20, 21, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,}, //PI
 };
 
-
- void digitalWrite(int pin, int value) {
+void digitalWrite(int pin, int value) {
     static uint32_t regval = 0;
     regval = *(gpio + a20_gpio_data_seek[pin]);
     if (value) {
@@ -65,7 +66,7 @@ static int a20_pin_mask[9][32] = //[BANK]  [INDEX]
     *(gpio + a20_gpio_data_seek[pin]) = regval;
 }
 
- int digitalRead(int pin) {
+int digitalRead(int pin) {
     static uint32_t regval = 0;
     regval = *(gpio + a20_gpio_data_seek[pin]);
     regval = regval >> a20_gpio_data_index[pin];
@@ -73,28 +74,28 @@ static int a20_pin_mask[9][32] = //[BANK]  [INDEX]
     return (int) regval;
 }
 
- void pinLow(int pin) {
+void pinLow(int pin) {
     static uint32_t regval = 0;
     regval = *(gpio + a20_gpio_data_seek[pin]);
     regval &= ~(1 << a20_gpio_data_index[pin]);
     *(gpio + a20_gpio_data_seek[pin]) = regval;
 }
 
- void pinHigh(int pin) {
+void pinHigh(int pin) {
     static uint32_t regval = 0;
     regval = *(gpio + a20_gpio_data_seek[pin]);
     regval |= (1 << a20_gpio_data_index[pin]);
     *(gpio + a20_gpio_data_seek[pin]) = regval;
 }
 
- void pinModeIn(int pin) {
+void pinModeIn(int pin) {
     uint32_t regval = 0;
     regval = *(gpio + a20_gpio_data_mode_seek[pin]);
     regval &= ~(7 << a20_gpio_data_mode_offset[pin]);
     *(gpio + a20_gpio_data_mode_seek[pin]) = regval;
 }
 
- void pinModeOut(int pin) {
+void pinModeOut(int pin) {
     uint32_t regval = 0;
     regval = *(gpio + a20_gpio_data_mode_seek[pin]);
     regval &= ~(7 << a20_gpio_data_mode_offset[pin]);
@@ -102,7 +103,21 @@ static int a20_pin_mask[9][32] = //[BANK]  [INDEX]
     *(gpio + a20_gpio_data_mode_seek[pin]) = regval;
 }
 
- void makeGpioDataOffset() {
+void pinPUD(int pin, int pud) {
+    uint32_t regval = 0;
+    int bank = (pin >> 5);
+    int index = pin - (bank << 5);
+    int sub = index >> 4;
+    int sub_index = index - 16 * sub;
+    uint32_t phyaddr = A20_PIO_BASE + (bank * 36) + 0x1c + sub * 4;
+    regval = GPIO_READ(phyaddr);
+    regval &= ~(3 << (sub_index << 1));
+    regval |= (pud << (sub_index << 1));
+    GPIO_WRITE(regval, phyaddr);
+    delayUsIdle(1);
+}
+
+void makeGpioDataOffset() {
     int i, pin;
     for (i = 0; i < A20_GPIO_NUM; i++) {
         pin = a20_physToGpio[i]; //WPI_MODE_PHYS

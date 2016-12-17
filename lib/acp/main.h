@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -20,6 +21,9 @@ typedef struct {
     int *fd;
     struct sockaddr_in addr;
     socklen_t addr_size;
+    int active;
+    struct timespec time1;
+    Mutex mutex;
 } Peer;
 
 typedef struct {
@@ -85,7 +89,7 @@ typedef struct {
 
 typedef struct {
     int id;
-    float temp;
+    float value;
     struct timespec tm;
     int state;
 } FTS;
@@ -115,21 +119,21 @@ typedef struct {
 
 extern int acp_initBuf(char *buf, size_t buf_size) ;
 
-extern void acp_parsePackI1(const char *buf, I1List *list, size_t list_max_size) ;
+extern void acp_parsePackI1( char *buf, I1List *list, size_t list_max_size) ;
 
-extern void acp_parsePackI2(const char *buf, I2List *list, size_t list_max_size) ;
+extern void acp_parsePackI2( char *buf, I2List *list, size_t list_max_size) ;
 
-extern void acp_parsePackI3(const char *buf, I3List *list, size_t list_max_size) ;
+extern void acp_parsePackI3( char *buf, I3List *list, size_t list_max_size) ;
 
-extern void acp_parsePackF1(const char *buf, F1List *list, size_t list_max_size) ;
+extern void acp_parsePackF1( char *buf, F1List *list, size_t list_max_size) ;
 
-extern void acp_parsePackI1F1(const char *buf, I1F1List *list, size_t list_max_size) ;
+extern void acp_parsePackI1F1( char *buf, I1F1List *list, size_t list_max_size) ;
 
-extern void acp_parsePackS1(const char *buf, S1List *list, size_t list_max_size) ;
+extern void acp_parsePackS1( char *buf, S1List *list, size_t list_max_size) ;
 
-extern void acp_parsePackI1S1(const char *buf, I1S1List *list, size_t list_max_size) ;
+extern void acp_parsePackI1S1( char *buf, I1S1List *list, size_t list_max_size) ;
 
-extern void acp_parsePackFTS(const char *buf, FTSList *list, size_t list_max_size) ;
+extern void acp_parsePackFTS( char *buf, FTSList *list, size_t list_max_size) ;
 
 extern size_t acp_packlen(char *buf, size_t buf_size) ;
 
@@ -147,13 +151,17 @@ extern void acp_sendStr(const char *s, uint8_t *crc, const Peer *peer) ;
 
 extern void acp_sendFooter(int8_t crc, Peer *peer) ;
 
-extern int acp_sendBufPack(char *buf, char qnf, const char *cmd_str, size_t buf_size, const Peer *peer) ;
+extern int acp_sendBufPack(char *buf, char qnf,  char *cmd_str, size_t buf_size, const Peer *peer) ;
 
 extern int acp_sendStrPack(char qnf, char *cmd, size_t buf_size, const Peer *peer) ;
 
 extern int acp_recvOK(Peer *peer, size_t buf_size) ;
 
+extern char acp_recvPing(Peer *peer, size_t buf_size);
+
 extern int acp_recvFTS(FTSList *list, char qnf, char *cmd, size_t buf_size, size_t list_max_size, int fd) ;
+
+extern int acp_recvI2(I2List *list, char qnf, char *cmd, size_t buf_size, size_t list_max_size, int fd);
 
 extern void freePeer(PeerList *list);
 
