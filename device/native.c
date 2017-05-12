@@ -52,7 +52,7 @@ void native_setOut(Pin *pin, int value) {
 }
 
 void native_getIn(Pin *pin) {
-        pin->value = digitalRead(pin->id_dev);
+    pin->value = pinRead(pin->id_dev);
 }
 
 void native_writeDeviceList(DeviceList *list) {
@@ -80,6 +80,10 @@ int native_checkData(PinList *list) {
         }
         if (list->item[i].pwm.period.tv_sec < 0 || list->item[i].pwm.period.tv_nsec < 0) {
             fprintf(stderr, "ERROR: checkData: bad pwm_period where net_id = %d\n", list->item[i].net_id);
+            return 0;
+        }
+        if (list->item[i].pwm.rsl < 0) {
+            fprintf(stderr, "ERROR: checkData: bad rsl where net_id = %d\n", list->item[i].net_id);
             return 0;
         }
     }
@@ -110,12 +114,16 @@ void native_setPtf() {
     writeDeviceList = native_writeDeviceList;
     readDeviceList = native_readDeviceList;
 }
+/*
+ * see mcp23017.c to make this function to be able to work with sqlite 
+ */
 
+/*
 int native_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_class) {
     PGresult *r;
     char q[LINE_SIZE];
     size_t i;
-    snprintf(q, sizeof q, "select net_id, id_within_device, mode, pud, pwm_period_sec, pwm_period_nsec from " APP_NAME_STR ".pin where app_class='%s' limit %d", app_class, NATIVE_MAX_PIN_NUM);
+    snprintf(q, sizeof q, "select net_id, id_within_device, mode, pud, rsl, pwm_period_sec, pwm_period_nsec from " APP_NAME_STR ".pin where app_class='%s' limit %d", app_class, NATIVE_MAX_PIN_NUM);
     if ((r = dbGetDataT(db_conn, q, q)) == NULL) {
         return 0;
     }
@@ -147,4 +155,10 @@ int native_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_cl
     }
     native_setPtf();
     return 1;
+}
+ */
+
+int native_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
+    putse("not emplemented yet");
+    return 0;
 }

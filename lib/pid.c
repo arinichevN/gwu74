@@ -4,13 +4,19 @@
 #include "timef.h"
 #include "acp/main.h"
 
+//time from inside
+
 float pid(PID *p, float set_point, float input) {
-    struct timespec now;
-    double dt;
-    static float error, derrivitive_error;
-    clock_gettime(LIB_CLOCK, &now);
+    struct timespec now = getCurrentTime();
+    float output;
     if (!p->reset) {
+        double dt;
+        float error, derrivitive_error;
         dt = (float) (now.tv_sec - p->previous_time.tv_sec)+(now.tv_nsec - p->previous_time.tv_nsec) * NANO_FACTOR;
+        if (dt < 0) {//we will hope this happens rarely
+            p->previous_time = now;
+            return p->previous_output;
+        }
         error = set_point - input;
         p->integral_error += error * dt;
         derrivitive_error = (error - p->previous_error) / dt;
@@ -18,26 +24,81 @@ float pid(PID *p, float set_point, float input) {
         p->previous_time = now;
         switch (p->mode) {
             case PID_MODE_COOLER:
-                return p->kp * -1 * error + p->ki * -1 * p->integral_error + p->kd * -1 * derrivitive_error;
+                output = p->kp * -1 * error + p->ki * -1 * p->integral_error + p->kd * -1 * derrivitive_error;
                 break;
             case PID_MODE_HEATER:
             default:
-                return p->kp * error + p->ki * p->integral_error + p->kd * derrivitive_error;
+                output = p->kp * error + p->ki * p->integral_error + p->kd * derrivitive_error;
                 break;
         }
     } else {
         p->integral_error = 0;
         p->previous_error = 0;
-        p->previous_time=now;
+        p->previous_time = now;
         p->reset = 0;
-        return 0.0f;
+        output = 0.0f;
     }
+    p->previous_output = output;
+    return output;
 }
 
-float pidwt(PID *p, float set_point, float input, struct timespec tm) {
-    double dt;
-    static float error, derrivitive_error;
+//time from inside, output limited
+
+float pid_mx(PID *p, float set_point, float input) {
+    struct timespec now = getCurrentTime();
+    float output;
     if (!p->reset) {
+        double dt;
+        float error, derrivitive_error;
+        float integral_error = p->integral_error;
+
+        dt = (float) (now.tv_sec - p->previous_time.tv_sec)+(now.tv_nsec - p->previous_time.tv_nsec) * NANO_FACTOR;
+        if (dt < 0) {//we will hope this happens rarely
+            p->previous_time = now;
+            return p->previous_output;
+        }
+
+        error = set_point - input;
+        integral_error += error * dt;
+
+        derrivitive_error = (error - p->previous_error) / dt;
+        // p->integral_error = integral_error;
+        p->previous_error = error;
+        p->previous_time = now;
+        switch (p->mode) {
+            case PID_MODE_COOLER:
+                output = p->kp * -1 * error + p->ki * -1 * integral_error + p->kd * -1 * derrivitive_error;
+                break;
+            case PID_MODE_HEATER:
+            default:
+                output = p->kp * error + p->ki * integral_error + p->kd * derrivitive_error;
+                break;
+        }
+        if (output > p->max_output) {
+            output = p->max_output;
+        } else if (output < p->min_output) {
+            output = p->min_output;
+        } else {
+            p->integral_error = integral_error;
+        }
+    } else {
+        p->integral_error = 0;
+        p->previous_error = 0;
+        p->previous_time = now;
+        p->reset = 0;
+        output = 0.0f;
+    }
+    p->previous_output = output;
+    return output;
+}
+
+//time from outside
+
+float pidwt(PID *p, float set_point, float input, struct timespec tm) {
+    float output;
+    if (!p->reset) {
+        double dt;
+        float error, derrivitive_error;
         dt = (float) (tm.tv_sec - p->previous_time.tv_sec)+(tm.tv_nsec - p->previous_time.tv_nsec) * NANO_FACTOR;
         error = set_point - input;
         p->integral_error += error * dt;
@@ -46,20 +107,72 @@ float pidwt(PID *p, float set_point, float input, struct timespec tm) {
         p->previous_time = tm;
         switch (p->mode) {
             case PID_MODE_COOLER:
-                return p->kp * -1 * error + p->ki * -1 * p->integral_error + p->kd * -1 * derrivitive_error;
+                output = p->kp * -1 * error + p->ki * -1 * p->integral_error + p->kd * -1 * derrivitive_error;
                 break;
             case PID_MODE_HEATER:
             default:
-                return p->kp * error + p->ki * p->integral_error + p->kd * derrivitive_error;
+                output = p->kp * error + p->ki * p->integral_error + p->kd * derrivitive_error;
                 break;
         }
     } else {
         p->integral_error = 0;
         p->previous_error = 0;
-       p->previous_time=tm;
+        p->previous_time = tm;
         p->reset = 0;
-        return 0.0f;
+        output = 0.0f;
     }
+    p->previous_output = output;
+    return output;
+}
+
+//time from outside, output limited
+
+float pidwt_mx(PID *p, float set_point, float input, struct timespec tm) {
+    struct timespec now = getCurrentTime();
+    float output;
+    if (!p->reset) {
+        double dt;
+        float error, derrivitive_error;
+        float integral_error = p->integral_error;
+
+        dt = (float) (tm.tv_sec - p->previous_time.tv_sec)+(tm.tv_nsec - p->previous_time.tv_nsec) * NANO_FACTOR;
+        if (dt < 0) {//we will hope this happens rarely
+            p->previous_time = tm;
+            return p->previous_output;
+        }
+
+        error = set_point - input;
+        integral_error += error * dt;
+
+        derrivitive_error = (error - p->previous_error) / dt;
+        // p->integral_error = integral_error;
+        p->previous_error = error;
+        p->previous_time = tm;
+        switch (p->mode) {
+            case PID_MODE_COOLER:
+                output = p->kp * -1 * error + p->ki * -1 * integral_error + p->kd * -1 * derrivitive_error;
+                break;
+            case PID_MODE_HEATER:
+            default:
+                output = p->kp * error + p->ki * integral_error + p->kd * derrivitive_error;
+                break;
+        }
+        if (output > p->max_output) {
+            output = p->max_output;
+        } else if (output < p->min_output) {
+            output = p->min_output;
+        } else {
+            p->integral_error = integral_error;
+        }
+    } else {
+        p->integral_error = 0;
+        p->previous_error = 0;
+        p->previous_time = tm;
+        p->reset = 0;
+        output = 0.0f;
+    }
+    p->previous_output = output;
+    return output;
 }
 
 void stopPid(PID *p) {

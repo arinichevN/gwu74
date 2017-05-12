@@ -88,8 +88,6 @@ void mcp23008_readDeviceList(DeviceList *list, PinList *pl) {
     }
 }
 
-
-
 int mcp23008_checkData(DeviceList *dl, PinList *pl) {
     size_t i, j;
     for (i = 0; i < pl->length; i++) {
@@ -111,6 +109,10 @@ int mcp23008_checkData(DeviceList *dl, PinList *pl) {
         }
         if (pl->item[i].pwm.period.tv_sec < 0 || pl->item[i].pwm.period.tv_nsec < 0) {
             fprintf(stderr, "ERROR: checkData: bad pwm_period where net_id = %d\n", pl->item[i].net_id);
+            return 0;
+        }
+        if (pl->item[i].pwm.rsl < 0) {
+            fprintf(stderr, "ERROR: checkData: bad rsl where net_id = %d\n", pl->item[i].net_id);
             return 0;
         }
     }
@@ -142,6 +144,7 @@ void mcp23008_setPtf() {
     readDeviceList = mcp23008_readDeviceList;
 }
 
+/*
 int mcp23008_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_class, char *i2c_path) {
     PGresult *r;
     char q[LINE_SIZE];
@@ -202,6 +205,89 @@ int mcp23008_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_
         }
     }
     PQclear(r);
+    if (!mcp23008_checkData(dl, pl)) {
+        return 0;
+    }
+    mcp23008_setPtf();
+    return 1;
+}
+ */
+
+int mcp23008_initDevPin(DeviceList *dl, PinList *pl, const char *db_path, char *i2c_path) {
+    sqlite3 *db;
+    if (!db_open(db_path, &db)) {
+        return 0;
+    }
+    size_t i;
+    int n = 0;
+    char q[LINE_SIZE];
+    db_getInt(&n, db, "select count(*) from device");
+    db_getInt(&n, db, q);
+    if (n <= 0) {
+        putse("mcp23008_initDevPin: query failed: select count(*) from device\n");
+        sqlite3_close(db);
+        return 0;
+    }
+    dl->length = 0;
+    dl->item = (Device *) malloc(n * sizeof *(dl->item));
+    if (dl->item == NULL) {
+        putse("ERROR: mcp23008_initDevPin: failed to allocate memory for devices\n");
+        sqlite3_close(db);
+        return 0;
+    }
+    memset(dl->item, 0, n * sizeof *(dl->item));
+    DeviceData data = {dl, i2c_path};
+    snprintf(q, sizeof q, "select id, addr_i2c from device limit %d", MCP23008_MAX_DEV_NUM);
+    if (!db_exec(db, q, getDevice_callback, (void*) &data)) {
+        printfe("mcp23008_initDevPin: query failed: %s\n", q);
+        sqlite3_close(db);
+        return 0;
+    }
+    if (dl->length != n) {
+        printfe("mcp23008_initDevPin: %ld != %ld\n", dl->length, n);
+        sqlite3_close(db);
+        return 0;
+    }
+    for (i = 0; i < dl->length; i++) {
+        if (dl->item[i].fd_i2c == -1) {
+            putse("mcp23008_initDevPin: I2COpen failed\n");
+            sqlite3_close(db);
+            return 0;
+        }
+        I2CWriteReg8(dl->item[i].fd_i2c, MCP23x08_IOCON, IOCON_INIT);
+        dl->item[i].old_data1 = I2CReadReg8(dl->item[i].fd_i2c, MCP23x08_OLAT);
+        dl->item[i].new_data1 = dl->item[i].old_data1;
+        if (dl->item[i].old_data1 == -1) {
+            putse("ERROR: initDevPin: I2CReadReg8 1\n");
+            sqlite3_close(db);
+            return 0;
+        }
+    }
+
+    n = 0;
+    db_getInt(&n, db, "select count(*) from pin");
+    if (n <= 0) {
+        putse("mcp23008_initDevPin: query failed: select count(*) from pin\n");
+        sqlite3_close(db);
+        return 0;
+    }
+    pl->item = (Pin *) malloc(n * sizeof *(pl->item));
+    if (pl->item == NULL) {
+        putse("mcp23008_initDevPin: failed to allocate memory for pins\n");
+        sqlite3_close(db);
+        return 0;
+    }
+    memset(pl->item, 0, n * sizeof *(pl->item));
+    pl->length = 0;
+    PinData datap = {pl, dl};
+    snprintf(q, sizeof q, "select net_id, device_id, id_within_device, mode, pud, rsl, pwm_period_sec, pwm_period_nsec from pin limit %d", MCP23008_MAX_PIN_NUM);
+    if (!db_exec(db, q, getPin_callback, (void*) &datap)) {
+        printfe("mcp23008_initDevPin: query failed: %s\n", q);
+        sqlite3_close(db);
+        return 0;
+    }
+
+    sqlite3_close(db);
     if (!mcp23008_checkData(dl, pl)) {
         return 0;
     }

@@ -8,7 +8,9 @@
 #define ACP_CMD_APP_PING '~'
 #define ACP_CMD_APP_HELP '?'
 #define ACP_CMD_APP_PRINT '@'
+#define ACP_CMD_APP_TIME 'T'
 #define ACP_CMD_APP_NO '_'
+
 
 #define ACP_RESP_APP_BUSY ("B")
 #define ACP_RESP_APP_IDLE ("I")

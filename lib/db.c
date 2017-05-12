@@ -2,18 +2,21 @@
 #include "db.h"
 
 int initDB(PGconn **conn, char *conninfo) {
+    if (PQstatus(*conn) == CONNECTION_OK) {
+        return 1;
+    }
     *conn = PQconnectdb(conninfo);
-    if (PQstatus(*conn) == CONNECTION_BAD) {
+    if (PQstatus(*conn) != CONNECTION_OK) {
         fprintf(stderr, "%s\n", PQerrorMessage(*conn));
+        PQfinish(*conn);
         return 0;
     }
     return 1;
 }
 
-void freeDB(PGconn **conn) {
-    if (*conn != NULL) {
-        PQfinish(*conn);
-        *conn = NULL;
+void freeDB(PGconn *conn) {
+    if (PQstatus(conn) == CONNECTION_OK) {
+        PQfinish(conn);
     }
 }
 

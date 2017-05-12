@@ -35,7 +35,7 @@ float dsToFloat(uint16_t v) {
 int ds18b20_read_scratchpad(int pin, const uint8_t *addr, uint8_t *sp) {
     if (!onewire_match(pin, addr)) {
 #ifdef MODE_DEBUG
-        fputs("ds18b20_read_scratchpad: not match2\n", stderr);
+        fprintf(stderr, "ds18b20_read_scratchpad: onewire_match() failed where pin = %d and address = %2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx\n", pin, addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
 #endif
         return 0;
     }
@@ -49,7 +49,7 @@ int ds18b20_read_scratchpad(int pin, const uint8_t *addr, uint8_t *sp) {
     }
     if (onewire_read_byte(pin) != crc) {
 #ifdef MODE_DEBUG
-        fputs("ds18b20_read_scratchpad: scratchpad crc error\n", stderr);
+        fprintf(stderr, "ds18b20_read_scratchpad: scratchpad crc error where pin = %d and address = %2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx\n", pin, addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
 #endif
         return 0;
     }
@@ -62,7 +62,7 @@ int ds18b20_read_scratchpad(int pin, const uint8_t *addr, uint8_t *sp) {
 int ds18b20_write_scratchpad(int pin, const uint8_t *addr, const uint8_t *data) {
     if (!onewire_match(pin, addr)) {
 #ifdef MODE_DEBUG
-        fputs("ds18b20_read_scratchpad: not match2\n", stderr);
+        fprintf(stderr, "ds18b20_write_scratchpad: onewire_match() failed where pin = %d and address = %2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx\n", pin, addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
 #endif
         return 0;
     }
@@ -167,7 +167,7 @@ int ds18b20_get_resolution(int pin, const uint8_t *addr, int *res) {
 int ds18b20_convert_t(int pin, const uint8_t *addr) {
     if (!onewire_match(pin, addr)) {
 #ifdef MODE_DEBUG
-        fputs("ds18b20_get_temp: not match1\n", stderr);
+         fprintf(stderr, "ds18b20_convert_t: onewire_match() failed where pin = %d and address = %2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx\n", pin, addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
 #endif
         return 0;
     }

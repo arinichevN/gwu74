@@ -1,18 +1,18 @@
-#include <stdint.h>
 
-#include "gpio.h"
+
 #include "1w.h"
-#include "timef.h"
 
 int onewire_reset(int pin) {
     int i;
+    pinPUD(pin, PUD_OFF);
+    pinModeOut(pin);
     pinLow(pin);
     delayUsBusy(640); 
     pinHigh(pin);
     pinModeIn(pin);
     for (i = 80; i; i--) {
-        if (!digitalRead(pin)) {
-            while (!digitalRead(pin)) {
+        if (!pinRead(pin)) {
+            while (!pinRead(pin)) {
             }
             pinModeOut(pin);
             return 1;
@@ -73,7 +73,7 @@ int onewire_read_bit(int pin) {
     pinHigh(pin);
     delayUsBusy(8); 
     pinModeIn(pin);
-    int r = digitalRead(pin);
+    int r = pinRead(pin);
     pinModeOut(pin);
     delayUsBusy(80); 
     return r;
@@ -86,7 +86,7 @@ int onewire_read_bit(int pin) {
     pinHigh(pin);
     delayUsBusy(2); 
     pinModeIn(pin);
-    int r = digitalRead(pin);
+    int r = pinRead(pin);
     pinModeOut(pin);
     delayUsBusy(60); 
     return r;

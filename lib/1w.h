@@ -1,6 +1,9 @@
 #ifndef LIBPAS_1W_H
 #define LIBPAS_1W_H
 
+#include <stdint.h>
+#include "timef.h"
+#include "gpio.h"
 
 #define OW_CMD_READ_ROM 0x33
 #define OW_CMD_MATCH_ROM 0x55

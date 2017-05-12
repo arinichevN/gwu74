@@ -17,6 +17,9 @@ typedef struct {
     float integral_error;
     float previous_error;
     float kp, ki, kd;
+    float max_output;
+    float min_output;
+    float previous_output;
     struct timespec previous_time;
     int reset;
     char mode;// PID_MODE_HEATER or PID_MODE_COOLER
@@ -46,10 +49,14 @@ typedef struct {
 
 extern float pid(PID *p, float set_point, float input);
 
+extern float pid_mx(PID *p, float set_point, float input);
+
 extern float pidwt(PID *p, float set_point, float input, struct timespec tm);
+
+extern float pidwt_mx(PID *p, float set_point, float input, struct timespec tm) ;
 
 extern void stopPid(PID *p);
 
 extern int pidAutoTune(PID_AT *at, PID *p, float input, float *output) ;
-#endif /* PID_H */
+#endif 
 

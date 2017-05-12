@@ -1,8 +1,11 @@
 #!/bin/bash
 
 MODE_DEBUG=-DMODE_DEBUG
+
 PLATFORM_ALL=-DP_ALL
 PLATFORM_A20=-DP_A20
+PLATFORM_A20=-DP_H3
+
 PSQL_I_DIR_A20=-I/usr/include/postgresql
 PSQL_I_DIR_ALL=-I/opt/PostgreSQL/9.5/include 
 PSQL_L_DIR_A20=-L/opt/PostgreSQL/9.5/lib
@@ -13,7 +16,7 @@ NONE=""
 #platform debug_mode psql_I psql_L
 function build {
 	gcc $1 $2 -c 1w.c && \
-	gcc $1 $2 -c app.c -D_REENTRANT  -lpthread && \
+	gcc $1 $2 -c app.c -D_REENTRANT -lpthread && \
 	gcc $1 $2 -c crc.c && \
 	gcc $1 $2 -c db.c $3 $4 -lpq && \
 	gcc $1 $2 -c i2c.c && \
@@ -28,7 +31,6 @@ function build {
 	gcc $1 $2 -c config.c $3 $4 -lpq && \
 	cd acp && \
 	gcc $1 $2 -c main.c && \
-	#gcc $1 $2 -c ds18b20.c && \
 	cd ../ && \
 	echo "library: making archive..." && \
 	rm -f libpac.a
@@ -43,6 +45,10 @@ function for_all_debug {
 
 function for_a20_debug {
     build $PLATFORM_A20 $MODE_DEBUG $PSQL_I_DIR_A20 $PSQL_L_DIR_A20
+}
+
+function for_h3_debug {
+    build $PLATFORM_H3 $MODE_DEBUG $PSQL_I_DIR_A20 $PSQL_L_DIR_A20
 }
 
 function for_all {

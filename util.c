@@ -1,7 +1,7 @@
 
 #include "device/main.h"
 
-FUN_LIST_GET_BY_ID(Device)
+//FUN_LIST_GET_BY_ID(Device)
 
 FUN_LIST_GET_BY(id, Device)
 
@@ -29,6 +29,7 @@ int lockPD(Pin *item) {
     }
     return 0;
 }
+
 int tryLockPD(Pin *item) {
     if (tryLockPin(item)) {
         if (tryLockDevice(item->device)) {
@@ -39,6 +40,7 @@ int tryLockPD(Pin *item) {
     }
     return 0;
 }
+
 void unlockPD(Pin *item) {
     unlockPin(item);
     unlockDevice(item->device);
@@ -131,53 +133,69 @@ int getPUDByStr(const char *str) {
 }
 
 char * getPinModeStr(char in) {
-    static char *str;
     switch (in) {
         case DIO_MODE_IN:
-            str = "IN";
-            break;
+            return "IN";
         case DIO_MODE_OUT:
-            str = "OUT";
-            break;
-        default:
-            str = "?";
-            break;
+            return "OUT";
     }
-    return str;
+    return "?";
+}
+
+char * getCmdStrLocal(char in) {
+    switch (in) {
+        case ACP_CMD_GET_INT:
+            return "ACP_CMD_GET_INT";
+        case ACP_CMD_GWU74_GET_OUT:
+            return "ACP_CMD_GWU74_GET_OUT";
+        case ACP_CMD_GWU74_GET_DATA:
+            return "ACP_CMD_GWU74_GET_DATA";
+        case ACP_CMD_SET_INT:
+            return "ACP_CMD_SET_INT";
+        case ACP_CMD_SET_DUTY_CYCLE_PWM:
+            return "ACP_CMD_SET_DUTY_CYCLE_PWM";
+        case ACP_CMD_SET_PWM_PERIOD:
+            return "ACP_CMD_SET_PWM_PERIOD";
+        case ACP_CMD_GWU74_SET_RSL:
+            return "ACP_CMD_GWU74_SET_RSL";
+    }
+    return "?";
 }
 
 char * getPinPUDStr(char in) {
-    static char *str;
     switch (in) {
         case DIO_PUD_OFF:
-            str = "OFF";
-            break;
+            return "OFF";
         case DIO_PUD_UP:
-            str = "UP";
-            break;
+            return "UP";
         case DIO_PUD_DOWN:
-            str = "DOWN";
-            break;
-        default:
-            str = "?";
-            break;
+            return "DOWN";
     }
-    return str;
+    return "?";
 }
 
-void savePin(Pin *item) {
-    PGresult *r;
+void savePin(Pin *item, const char *db_path) {
     char q[LINE_SIZE];
-    snprintf(q, sizeof q, "update " APP_NAME_STR ".pin set pwm_period_sec=%ld, pwm_period_nsec=%ld where app_class='%s' and net_id=%d", item->pwm.period.tv_sec, item->pwm.period.tv_nsec, app_class, item->net_id);
-    if ((r = dbGetDataC(*db_connp_data, q, q)) != NULL) {
-        PQclear(r);
+    snprintf(q, sizeof q, "update pin set pwm_period_sec=%ld, pwm_period_nsec=%ld, rsl=%u where net_id=%d", item->pwm.period.tv_sec, item->pwm.period.tv_nsec, item->pwm.rsl, item->net_id);
+    sqlite3 *db;
+    if (!db_open(db_path, &db)) {
+        return;
     }
+    if (!db_exec(db, q, 0, 0)) {
+#ifdef MODE_DEBUG
+        fprintf(stderr, "savePin: query failed: %s\n", q);
+#endif
+    }
+    sqlite3_close(db);
+#ifdef MODE_DEBUG
+    printf("savePin: done: %s\n", q);
+#endif
 }
 
 int bufCatPinIn(const Pin *item, char *buf, size_t buf_size) {
     if (item->mode == DIO_MODE_IN) {
         char q[LINE_SIZE];
-        snprintf(q, sizeof q, "%d_%d\n", item->net_id, item->value);
+        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR, item->net_id, item->value);
         if (bufCat(buf, q, buf_size) == NULL) {
             return 0;
         }
@@ -188,7 +206,7 @@ int bufCatPinIn(const Pin *item, char *buf, size_t buf_size) {
 int bufCatPinOut(const Pin *item, char *buf, size_t buf_size) {
     if (item->mode == DIO_MODE_OUT) {
         char q[LINE_SIZE];
-        snprintf(q, sizeof q, "%d_%d\n", item->net_id, item->out);
+        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR, item->net_id, item->out);
         if (bufCat(buf, q, buf_size) == NULL) {
             return 0;
         }
@@ -198,11 +216,11 @@ int bufCatPinOut(const Pin *item, char *buf, size_t buf_size) {
 
 int bufCatData(const Pin *item, char *buf, size_t buf_size) {
     char q[LINE_SIZE];
-    snprintf(q, sizeof q, "%d_%s_%s_%ld_%ld\n", 
-            item->net_id, 
-            getPinModeStr(item->mode), 
+    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_ROW_STR,
+            item->net_id,
+            getPinModeStr(item->mode),
             getPinPUDStr(item->pud),
-            item->pwm.period.tv_sec, 
+            item->pwm.period.tv_sec,
             item->pwm.period.tv_nsec
             );
     if (bufCat(buf, q, buf_size) == NULL) {
@@ -211,31 +229,72 @@ int bufCatData(const Pin *item, char *buf, size_t buf_size) {
     return 1;
 }
 
+void setPinOut(Pin *item, int value) {
+    if (item->out == value) {
+        return;
+    }
+    setOut(item, value);
+    item->out = value;
+}
+
 void setPinOutput(Pin *item, int value) {
-    if (item->mode == DIO_MODE_OUT) {
-        item->out_pwm = 0;
-        setOut(item, value);
-        item->out=value;
+#ifdef MODE_DEBUG
+    puts("setPinOutput");
+#endif
+    if (lockPD(item)) {
+        if (item->mode == DIO_MODE_OUT) {
+            item->out_pwm = 0;
+            setPinOut(item, value);
+        }
+        unlockPD(item);
     }
 }
 
 void setPinDutyCyclePWM(Pin *item, int value) {
-    if (item->mode == DIO_MODE_OUT) {
-        item->out_pwm = 1;
-        item->duty_cycle = value;
+#ifdef MODE_DEBUG
+    puts("setPinDutyCyclePWM");
+#endif
+    if (lockPD(item)) {
+        if (item->mode == DIO_MODE_OUT) {
+            item->out_pwm = 1;
+            item->duty_cycle = value;
+        }
+        unlockPD(item);
     }
 }
 
-int sendStrPack(char qnf, const char *cmd) {
-    extern size_t udp_buf_size;
-    extern Peer peer_client;
-    return acp_sendStrPack(qnf, cmd, udp_buf_size, &peer_client);
+void setPinPeriodPWM(Pin *item, int value, const char *db_data_path) {
+#ifdef MODE_DEBUG
+    puts("setPinPeriodPWM");
+#endif
+    if (lockPin(item)) {
+        usec2timespec(value, &item->pwm.period)
+        savePin(item, db_data_path);
+        unlockPin(item);
+    }
 }
 
-int sendBufPack(char *buf, char qnf, const char *cmd_str) {
-    extern size_t udp_buf_size;
+void setPinRslPWM(Pin *item, int value, const char *db_data_path) {
+#ifdef MODE_DEBUG
+    puts("setPinRslPWM");
+#endif
+    if (lockPin(item)) {
+        if (value > 0) {
+            item->pwm.rsl = value;
+            savePin(item, db_data_path);
+        }
+        unlockPin(item);
+    }
+}
+
+int sendStrPack(char qnf, char *cmd) {
     extern Peer peer_client;
-    return acp_sendBufPack(buf, qnf, cmd_str, udp_buf_size, &peer_client);
+    return acp_sendStrPack(qnf, cmd, &peer_client);
+}
+
+int sendBufPack(char *buf, char qnf, char *cmd_str) {
+    extern Peer peer_client;
+    return acp_sendBufPack(buf, qnf, cmd_str, &peer_client);
 }
 
 void sendStr(const char *s, uint8_t *crc) {
@@ -244,4 +303,9 @@ void sendStr(const char *s, uint8_t *crc) {
 
 void sendFooter(int8_t crc) {
     acp_sendFooter(crc, &peer_client);
+}
+
+void waitThread_ctl(char cmd) {
+    thread_cmd = cmd;
+    pthread_join(thread, NULL);
 }

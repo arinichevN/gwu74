@@ -3,20 +3,16 @@ APP=gwu74
 APP_DBG=`printf "%s_dbg" "$APP"`
 INST_DIR=/usr/sbin
 CONF_DIR=/etc/controller
+CONF_DIR_APP=$CONF_DIR/$APP
 PID_DIR=/var/run
 
-#lubuntu
-PSQL_I_DIR=-I/usr/include/postgresql
-
-#xubuntu
-#PSQL_I_DIR=-I/opt/PostgreSQL/9.5/include 
-
-PSQL_L_DIR=-L/opt/PostgreSQL/9.5/lib
-
 MODE_DEBUG=-DMODE_DEBUG
-PLATFORM_ALL=-DP_ALL
-PLATFORM_A20=-DP_A20
-NONE=""
+MODE_FULL=-DMODE_FULL
+#PLATFORM=-DPLATFORM_ANY
+#PLATFORM=-DPLATFORM_A20
+PLATFORM=-DPLATFORM_H3
+
+NONE=-DNONEANDNOTHING
 
 function move_bin {
 	([ -d $INST_DIR ] || mkdir $INST_DIR) && \
@@ -36,8 +32,10 @@ function move_bin_dbg {
 
 function move_conf {
 	([ -d $CONF_DIR ] || mkdir $CONF_DIR) && \
-	cp  main.conf $CONF_DIR/$APP.conf && \
-	echo "Your $APP configuration file: $CONF_DIR/$APP.conf";
+	([ -d $CONF_DIR_APP ] || mkdir $CONF_DIR_APP) && \
+	cp  config.tsv $CONF_DIR_APP && \
+	cp  data.db $CONF_DIR_APP && \
+	echo "Your $APP configuration files are here: $CONF_DIR_APP";
 }
 
 #your application will run on OS startup
@@ -49,48 +47,61 @@ function conf_autostart {
 	echo "Autostart configured";
 }
 
-#    1         2        3     4
-#platform debug_mode psql_I psql_L
+function build_lib {
+	gcc $1 $PLATFORM -c app.c -D_REENTRANT -lpthread && \
+	gcc $1 $PLATFORM -c crc.c && \
+	gcc $1 $PLATFORM -c dbl.c -DSQLITE_THREADSAFE=2 -DSQLITE_OMIT_LOAD_EXTENSION -lsqlite3 && \
+	gcc $1 $PLATFORM -c configl.c -DSQLITE_THREADSAFE=2 -DSQLITE_OMIT_LOAD_EXTENSION -lsqlite3 && \
+	gcc $1 $PLATFORM -c timef.c && \
+	gcc $1 $PLATFORM -c udp.c && \
+	gcc $1 $PLATFORM -c util.c && \
+	gcc $1 $PLATFORM -c gpio.c && \
+	gcc $1 $PLATFORM -c pm.c && \
+	gcc $1 $PLATFORM -c pwm.c && \
+	gcc $1 $PLATFORM -c i2c.c && \
+	
+	cd acp && \
+	gcc $1 $PLATFORM -c main.c && \
+	gcc $1 $PLATFORM -c lck.c && \
+	cd ../ && \
+	echo "library: making archive..." && \
+	rm -f libpac.a
+	ar -crv libpac.a app.o crc.o dbl.o timef.o udp.o util.o configl.o acp/main.o acp/lck.o gpio.o pm.o pwm.o i2c.o && echo "library: done"
+	rm -f *.o acp/*.o
+}
+
+
 function build {
 	cd lib && \
-	./build.sh $1 $2 $3 $4 && \
-	cd ../ && \
-	gcc -D_REENTRANT $1 $2 main.c -o $5 $3 $4 -L./lib -lpq -lpthread -lpac && \
-	#gcc -D_REENTRANT $1 $2 device/idle.c  device/native.c  device/pcf8574.c  device/mcp23008.c  device/mcp23017.c main.c -o $5 $3 $4 -L./lib -lpq -lpthread -lpac && \
-	echo "Application successfully compiled. Launch command: sudo ./"$5
+	build_lib $1 && \
+	cd ../ 
+	gcc -D_REENTRANT -DSQLITE_THREADSAFE=2 -DSQLITE_OMIT_LOAD_EXTENSION $1 $3 $PLATFORM main.c -o $2 -lpthread -lsqlite3 -L./lib -lpac && echo "Application successfully compiled. Launch command: sudo ./"$2
 }
 
-#builds application for Allwinner A20 CPU
-function for_a20_debug {
-	build $PLATFORM_A20 $MODE_DEBUG $PSQL_I_DIR $PSQL_L_DIR $APP_DBG
-}
-
-#builds hardware independent application (functionality may be reduced)
-function for_all_debug {
-	build $PLATFORM_ALL $MODE_DEBUG $PSQL_I_DIR $PSQL_L_DIR $APP_DBG
-}
-#builds application for Allwinner A20 CPU
-function for_a20 {
-	build $PLATFORM_A20 $NONE $PSQL_I_DIR $PSQL_L_DIR $APP && \
-	build $PLATFORM_A20 $MODE_DEBUG $PSQL_I_DIR $PSQL_L_DIR $APP_DBG && \
+function full {
+	build $NONE $APP $MODE_FULL && \
+	build $MODE_DEBUG $APP_DBG $MODE_FULL && \
 	move_bin && move_bin_dbg && move_conf && conf_autostart
 }
-
-#builds hardware independent application (functionality may be reduced)
-function for_all {
-	build $PLATFORM_ALL $NONE $PSQL_I_DIR $PSQL_L_DIR $APP
+function full_nc {
+	build $NONE $APP $MODE_FULL && \
+	build $MODE_DEBUG $APP_DBG $MODE_FULL  && \
+	move_bin && move_bin_dbg
 }
-
-function test {
-	echo $PLATFORM_ALL $NONE $PSQL_I_DIR $PSQL_L_DIR $APP_DBG
+function part_debug {
+	build $MODE_DEBUG $APP_DBG $NONE
 }
-
 function uninstall {
 	pkill -F $PID_DIR/$APP.pid --signal 9
 	update-rc.d -f $APP remove
 	rm -f $INST_DIR/$APP
 	rm -f $INST_DIR/$APP_DBG
-	rm -f $CONF_DIR/$APP.conf
+	rm -rf $CONF_DIR_APP
+}
+function uninstall_nc {
+	pkill -F $PID_DIR/$APP.pid --signal 9
+	rm -f $INST_DIR/$APP
+	rm -f $INST_DIR/$APP_DBG
 }
 f=$1
-${f} $2
+${f}

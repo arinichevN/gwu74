@@ -23,28 +23,28 @@
 #define LOW 0
 #define HIGH 1
 
-#define	PUD_OFF 0
-#define	PUD_DOWN 1
-#define	PUD_UP 2
+#define PUD_OFF 0
+#define PUD_DOWN 1
+#define PUD_UP 2
 
 
 #define MODE_IN_STR "in"
 #define MODE_OUT_STR "out"
 
-#define	PUD_OFF_STR "off"
-#define	PUD_DOWN_STR "down"
-#define	PUD_UP_STR "up"
+#define PUD_OFF_STR "off"
+#define PUD_DOWN_STR "down"
+#define PUD_UP_STR "up"
 
-extern void digitalWrite(int pin, int value);
-extern int digitalRead(int pin);
+extern void pinWrite(int pin, int value);
+extern int pinRead(int pin);
 extern void pinLow(int pin);
 extern void pinHigh(int pin);
 extern void pinModeIn(int pin);
 extern void pinModeOut(int pin);
 extern void pinPUD(int pin, int pud);
-//extern int validatePin(int pin);
-extern int checkPin(int pin) ;
+extern int checkPin(int pin);
 extern int gpioSetup();
+extern int gpioFree();
 
 
 #endif 

@@ -7,7 +7,7 @@
 
 extern int initDB(PGconn **conn, char *conninfo);
 
-extern void freeDB(PGconn **conn);
+extern void freeDB(PGconn *conn);
 
 extern PGresult *dbGetDataC(PGconn *conn, char *q, char *ms);
 

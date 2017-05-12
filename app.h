@@ -5,12 +5,33 @@
 
 #define APP_NAME_STR TOSTRING(gwu74)
 
-#ifndef MODE_DEBUG
-#define CONF_FILE ("/etc/controller/gwu74.conf")
+#ifdef MODE_FULL
+#define CONF_DIR "/etc/controller/" APP_NAME_STR "/"
 #endif
-#ifdef MODE_DEBUG
-#define CONF_FILE ("main.conf")
+#ifndef MODE_FULL
+#define CONF_DIR "./"
 #endif
+#define CONFIG_FILE "" CONF_DIR "config.tsv"
+
+extern int initData();
+
+extern void freeData();
+
+extern void freeApp();
+
+extern void exit_nicely();
+
+extern void exit_nicely_e(char *s);
+
+extern int readSettings();
+
+extern void serverRun(int *state, int init_state);
+
+extern void *threadFunction(void *arg);
+
+extern int createThread_ctl();
+
+extern void initApp();
 
 #endif
 

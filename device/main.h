@@ -2,7 +2,7 @@
 #ifndef GWU74_DEV_H
 #define GWU74_DEV_H
 
-#include "../lib/db.h"
+#include "../lib/dbl.h"
 #include "../lib/gpio.h"
 #include "../lib/pm.h"
 #include "../lib/pwm.h"

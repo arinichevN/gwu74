@@ -9,18 +9,26 @@ struct timespec getCurrentTime() {
 void delayUsBusy(unsigned int td) {
     struct timespec now, interval, end;
     clock_gettime(LIB_CLOCK, &now);
-    interval.tv_sec = td / 1000000;
-    interval.tv_nsec = (td % 1000000)*1000;
+    usec2timespec(td, &interval)
     timespecadd(&now, &interval, &end);
     while (timespeccmp(&now, &end, <)) {
         clock_gettime(LIB_CLOCK, &now);
     }
 }
 
+void delayUsBusyC(unsigned int td) {
+    clock_t now, interval, end;
+    now = clock();
+    interval = td * CLOCKS_PER_SEC / 1000000;
+    end = now + interval;
+    while (now < end) {
+        now = clock();
+    }
+}
+
 void delayUsIdle(unsigned int td) {
     struct timespec requested, remaining;
-    requested.tv_sec = (time_t) (td / 1000000);
-    requested.tv_nsec = (long) (td % 1000000) * 1000;
+    usec2timespec(td, &requested)
     nanosleep(&requested, &remaining);
 }
 
@@ -108,6 +116,14 @@ struct timespec getTimeRest_ts(struct timespec t_interval, struct timespec t_sta
     clock_gettime(CLOCK_REALTIME, &now);
     timespecadd(&t_interval, &t_start, &sum);
     timespecsub(&sum, &now, &out);
+    return out;
+}
+
+struct timespec getTimeRestTmr(struct timespec interval, Ton_ts tmr) {
+    struct timespec out = {-1, -1};
+    if (tmr.ready) {
+        out = getTimeRest_ts(interval, tmr.start);
+    }
     return out;
 }
 
