@@ -1,1 +1,2 @@
+port	PID_path	socket_buffer_size	cycle_duration_sec	cycle_duration_nsec	peer_lock_id	use_lock	i2c_path	device_name	private_db_file	public_db_file
 49163	/var/run/gwu74.pid	508	0	3000000	lck_1	1	/dev/i2c-1	mcp23008	/etc/controller/gwu74/data.db	/etc/controller/public.db

@@ -13,6 +13,10 @@
 #define VAL_IS_OUT_C SNSR_VAL < item->goal - item->cooler.delta
 #define SNSRF_COUNT_MAX 7
 
+#define REG_EM_MODE_COOLER_STR "cooler"
+#define REG_EM_MODE_HEATER_STR "heater"
+#define REG_EM_MODE_BOTH_STR "both"
+
 enum {
     REG_OFF,
     REG_INIT,

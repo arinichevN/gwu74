@@ -3,19 +3,19 @@
 #include "reg.c"
 #include "regonfhc.h"
 
-static void regpidonfhc_controlEM(RegPIDOnfHCEM *item, float output) {
+static void controlEM(RegPIDOnfHCEM *item, float output) {
     if (item->use) {
         reg_controlEM(&item->em, output);
         item->output = output;
     }
 }
 
-void regpidonfhc_onf(RegPIDOnfHC *item) {
+void regpidonfhc_control(RegPIDOnfHC *item) {
     switch (item->state) {
         case REG_INIT:
             item->tmr.ready = 0;
-            regpidonfhc_controlEM(&item->heater, 0.0f);
-            regpidonfhc_controlEM(&item->cooler, 0.0f);
+            controlEM(&item->heater, 0.0f);
+            controlEM(&item->cooler, 0.0f);
             item->output = 0.0f;
             item->snsrf_count = 0;
             item->heater.pid.mode = PID_MODE_HEATER;
@@ -92,7 +92,7 @@ void regpidonfhc_onf(RegPIDOnfHC *item) {
                         printf("state_r switched from %s to %s\n", state1, state2);
 #endif
                         item->state_r = other_em;
-                        regpidonfhc_controlEM(reg_em, 0.0f);
+                        controlEM(reg_em, 0.0f);
                     }
                 } else {
                     item->tmr.ready = 0;
@@ -147,12 +147,12 @@ void regpidonfhc_onf(RegPIDOnfHC *item) {
                         }
                         break;
                 }
-                regpidonfhc_controlEM(reg_em, item->output);
-                regpidonfhc_controlEM(reg_em_other, 0.0f);
+                controlEM(reg_em, item->output);
+                controlEM(reg_em_other, 0.0f);
             } else {
                 if (item->snsrf_count > SNSRF_COUNT_MAX) {
-                    regpidonfhc_controlEM(&item->heater, 0.0f);
-                    regpidonfhc_controlEM(&item->cooler, 0.0f);
+                    controlEM(&item->heater, 0.0f);
+                    controlEM(&item->cooler, 0.0f);
                     item->output = 0.0f;
                     item->state = REG_INIT;
 #ifdef MODE_DEBUG
@@ -168,8 +168,8 @@ void regpidonfhc_onf(RegPIDOnfHC *item) {
             break;
         }
         case REG_DISABLE:
-            regpidonfhc_controlEM(&item->heater, 0.0f);
-            regpidonfhc_controlEM(&item->cooler, 0.0f);
+            controlEM(&item->heater, 0.0f);
+            controlEM(&item->cooler, 0.0f);
             item->heater.output = 0.0f;
             item->cooler.output = 0.0f;
             item->tmr.ready = 0;
@@ -203,14 +203,14 @@ void regpidonfhc_disable(RegPIDOnfHC *item) {
 
 void regpidonfhc_setCoolerDelta(RegPIDOnfHC *item, float value) {
     item->cooler.delta = value;
-    if (item->heater.mode == REG_MODE_ONF) {
+    if (item->state==REG_BUSY && item->heater.mode == REG_MODE_ONF && item->state_r == REG_COOLER) {
         item->state = REG_INIT;
     }
 }
 
 void regpidonfhc_setHeaterDelta(RegPIDOnfHC *item, float value) {
     item->heater.delta = value;
-    if (item->heater.mode == REG_MODE_ONF) {
+    if (item->state==REG_BUSY && item->heater.mode == REG_MODE_ONF && item->state_r == REG_HEATER) {
         item->state = REG_INIT;
     }
 }
@@ -254,7 +254,7 @@ void regpidonfhc_setHeaterMode(RegPIDOnfHC *item, const char * value) {
     } else {
         return;
     }
-    if (item->state == REG_BUSY) {
+    if (item->state == REG_BUSY && item->state_r==REG_HEATER) {
         item->state = REG_INIT;
     }
 }
@@ -267,26 +267,26 @@ void regpidonfhc_setCoolerMode(RegPIDOnfHC *item, const char * value) {
     } else {
         return;
     }
-    if (item->state == REG_BUSY) {
+    if (item->state == REG_BUSY && item->state_r==REG_COOLER) {
         item->state = REG_INIT;
     }
 }
 
 void regpidonfhc_setEMMode(RegPIDOnfHC *item, const char * value) {
-    if (strcmp(REG_PIDONF_HC_EM_MODE_COOLER_STR, value) == 0) {
-        regpidonfhc_controlEM(&item->heater, 0.0f);
+    if (strcmp(REG_EM_MODE_COOLER_STR, value) == 0) {
+        controlEM(&item->heater, 0.0f);
         item->cooler.use = 1;
         item->heater.use = 0;
-    } else if (strcmp(REG_PIDONF_HC_EM_MODE_HEATER_STR, value) == 0) {
-        regpidonfhc_controlEM(&item->cooler, 0.0f);
+    } else if (strcmp(REG_EM_MODE_HEATER_STR, value) == 0) {
+        controlEM(&item->cooler, 0.0f);
         item->cooler.use = 0;
         item->heater.use = 1;
-    } else if (strcmp(REG_PIDONF_HC_EM_MODE_BOTH_STR, value) == 0) {
+    } else if (strcmp(REG_EM_MODE_BOTH_STR, value) == 0) {
         item->cooler.use = 1;
         item->heater.use = 1;
     } else {
-        regpidonfhc_controlEM(&item->heater, 0.0f);
-        regpidonfhc_controlEM(&item->cooler, 0.0f);
+        controlEM(&item->heater, 0.0f);
+        controlEM(&item->cooler, 0.0f);
         item->cooler.use = 0;
         item->heater.use = 0;
     }
@@ -301,19 +301,17 @@ void regpidonfhc_setChangeGap(RegPIDOnfHC *item, int value) {
 }
 
 void regpidonfhc_setHeaterPower(RegPIDOnfHC *item, float value) {
-    reg_controlEM(&item->heater.em, value);
-    item->heater.output = value;
+    controlEM(&item->heater, value);
     item->output = item->heater.output;
 }
 
 void regpidonfhc_setCoolerPower(RegPIDOnfHC *item, float value) {
-    reg_controlEM(&item->cooler.em, value);
-    item->cooler.output = value;
+    controlEM(&item->cooler, value);
     item->output = item->cooler.output;
 }
 
 void regpidonfhc_turnOff(RegPIDOnfHC *item) {
     item->state = REG_OFF;
-    reg_controlEM(&item->cooler.em, 0.0f);
-    reg_controlEM(&item->heater.em, 0.0f);
+    controlEM(&item->cooler, 0.0f);
+    controlEM(&item->heater, 0.0f);
 }

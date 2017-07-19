@@ -17,5 +17,7 @@
 #define ACP_CMD_REGONF_PROG_ENABLE 'y'
 #define ACP_CMD_REGONF_PROG_DISABLE 'z'
 
+#define ACP_CMD_REGONF_PROG_SET_EM_MODE 'A'
+
 #endif 
 

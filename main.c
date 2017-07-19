@@ -57,7 +57,8 @@ int readSettings() {
 #endif
         return 0;
     }
-
+    char s[LINE_SIZE];
+    fgets(s, LINE_SIZE, stream);
     int n;
     n = fscanf(stream, "%d\t%255s\t%d\t%ld\t%ld\t%32s\t%d\t%255s\t%32s\t%255s\t%255s\n",
             &sock_port,
@@ -74,14 +75,24 @@ int readSettings() {
             );
     if (n != 11) {
         fclose(stream);
+#ifdef MODE_DEBUG
+        fputs("ERROR: readSettings: bad row format\n", stderr);
+#endif
         return 0;
     }
     fclose(stream);
+#ifdef MODE_DEBUG
+    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tsock_buf_size: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\ti2c_path: %s, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n", 
+    sock_port, pid_path, sock_buf_size, cycle_duration.tv_sec, cycle_duration.tv_nsec,peer_lock_id, use_lock, i2c_path, device_name, db_data_path, db_public_path);
+#endif
     return 1;
 }
 
 void initApp() {
     readHostName(hostname);
+    #ifdef MODE_DEBUG
+    printf("initApp: \n\tCONFIG_FILE: %s\n", CONFIG_FILE);
+#endif
     if (!readSettings()) {
         exit_nicely_e("initApp: failed to read settings\n");
     }
@@ -95,20 +106,6 @@ void initApp() {
     if (!initClient(&sock_fd_tf, WAIT_RESP_TIMEOUT)) {
         exit_nicely_e("initApp: failed to initialize udp client\n");
     }
-#ifdef MODE_DEBUG
-    printf("initApp: CONFIG_FILE: %s\n", CONFIG_FILE);
-    printf("initApp: PID: %d\n", proc_id);
-    printf("initApp: sock_port: %d\n", sock_port);
-    printf("initApp: sock_buf_size: %d\n", sock_buf_size);
-    printf("initApp: pid_path: %s\n", pid_path);
-    printf("initApp: cycle_duration: %ld(sec) %ld(nsec)\n", cycle_duration.tv_sec, cycle_duration.tv_nsec);
-    printf("initApp: peer_lock_id: %s\n", peer_lock_id);
-    printf("initApp: use_lock: %d\n", use_lock);
-    printf("initApp: i2c_path: %s\n", i2c_path);
-    printf("initApp: device_name: %s\n", device_name);
-    printf("initApp: db_data_path: %s\n", db_data_path);
-    printf("initApp: db_public_path: %s\n", db_public_path);
-#endif
 
 }
 
@@ -161,8 +158,6 @@ int initData() {
 void serverRun(int *state, int init_state) {
     char buf_in[sock_buf_size];
     char buf_out[sock_buf_size];
-    static uint8_t crc;
-    crc = 0;
     memset(buf_in, 0, sizeof buf_in);
     acp_initBuf(buf_out, sizeof buf_out);
     if (recvfrom(sock_fd, buf_in, sizeof buf_in, 0, (struct sockaddr*) (&(peer_client.addr)), &(peer_client.addr_size)) < 0) {
@@ -635,6 +630,12 @@ void exit_nicely_e(char *s) {
 }
 
 int main(int argc, char** argv) {
+    if (geteuid() != 0) {
+#ifdef MODE_DEBUG
+        fprintf(stderr, "%s: root user expected\n", APP_NAME_STR);
+#endif
+        return (EXIT_FAILURE);
+    }
 #ifndef MODE_DEBUG
     daemon(0, 0);
 #endif
