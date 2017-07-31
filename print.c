@@ -65,7 +65,7 @@ void printData(DeviceList *dl, PinList *pl) {
     for (i = 0; i < pl->length; i++) {
         snprintf(q, sizeof q, "|%11d|%11p|%11d|%11.11s|%11.11s|%11d|%11d|%11d|%11ld|%11ld|%11u|\n",
                 pl->item[i].net_id,
-                pl->item[i].device,
+               (void *) pl->item[i].device,
                 pl->item[i].id_dev,
                 getPinModeStr(pl->item[i].mode),
                 getPinPUDStr(pl->item[i].pud),
@@ -108,7 +108,7 @@ void printPin(PinList *list) {
     for (i = 0; i < list->length; i++) {
         printf("|%11d|%11p|%11d|%11.11s|%11.11s|%11d|%11d|%11ld|%11u|\n",
                 list->item[i].net_id,
-                list->item[i].device,
+               (void *) list->item[i].device,
                 list->item[i].id_dev,
                 getPinModeStr(list->item[i].mode),
                 getPinPUDStr(list->item[i].pud),

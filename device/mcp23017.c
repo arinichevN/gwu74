@@ -54,7 +54,7 @@ void mcp23017_setPUD(Pin *pin, int pud) {
  * call writeDeviceList() function after this function and then data will be written to chip
  */
 void mcp23017_setOut(Pin *pin, int value) {
-    int bit, old, id;
+    int bit, id;
     id = pin->id_dev;
     bit = 1 << (id & 7);
     if (id < 8) {

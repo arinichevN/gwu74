@@ -57,8 +57,7 @@ int readSettings() {
 #endif
         return 0;
     }
-    char s[LINE_SIZE];
-    fgets(s, LINE_SIZE, stream);
+    skipLine(stream);
     int n;
     n = fscanf(stream, "%d\t%255s\t%d\t%ld\t%ld\t%32s\t%d\t%255s\t%32s\t%255s\t%255s\n",
             &sock_port,
@@ -82,15 +81,15 @@ int readSettings() {
     }
     fclose(stream);
 #ifdef MODE_DEBUG
-    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tsock_buf_size: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\ti2c_path: %s, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n", 
-    sock_port, pid_path, sock_buf_size, cycle_duration.tv_sec, cycle_duration.tv_nsec,peer_lock_id, use_lock, i2c_path, device_name, db_data_path, db_public_path);
+    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tsock_buf_size: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\ti2c_path: %s, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
+            sock_port, pid_path, sock_buf_size, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, i2c_path, device_name, db_data_path, db_public_path);
 #endif
     return 1;
 }
 
 void initApp() {
     readHostName(hostname);
-    #ifdef MODE_DEBUG
+#ifdef MODE_DEBUG
     printf("initApp: \n\tCONFIG_FILE: %s\n", CONFIG_FILE);
 #endif
     if (!readSettings()) {
@@ -262,7 +261,7 @@ void serverRun(int *state, int init_state) {
     char *cmd_str = getCmdStrLocal(buf_in[1]);
     printf("serverRun: local command: %s\n", cmd_str);
 #endif
-    static int i, j;
+    static int i;
     switch (buf_in[1]) {
         case ACP_CMD_GWU74_GET_DATA:
             switch (buf_in[0]) {
