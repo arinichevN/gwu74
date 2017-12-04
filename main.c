@@ -12,7 +12,6 @@ int sock_port = -1;
 int sock_fd = -1; //udp socket file descriptor
 int sock_fd_tf = -1;
 int pid_file = -1;
-size_t sock_buf_size = 0;
 int proc_id = -1;
 struct timespec cycle_duration = {0, 0};
 
@@ -24,8 +23,7 @@ char device_name[NAME_SIZE];
 char db_data_path[LINE_SIZE];
 char db_public_path[LINE_SIZE];
 
-pthread_t thread;
-char thread_cmd;
+DEF_THREAD
 
 I1List i1l = {NULL, 0};
 I2List i2l = {NULL, 0};
@@ -53,16 +51,15 @@ int readSettings() {
     FILE* stream = fopen(CONFIG_FILE, "r");
     if (stream == NULL) {
 #ifdef MODE_DEBUG
-        fputs("ERROR: readSettings: fopen\n", stderr);
+        perror("readSettings()");
 #endif
         return 0;
     }
     skipLine(stream);
     int n;
-    n = fscanf(stream, "%d\t%255s\t%d\t%ld\t%ld\t%32s\t%d\t%255s\t%32s\t%255s\t%255s\n",
+    n = fscanf(stream, "%d\t%255s\t%ld\t%ld\t%32s\t%d\t%255s\t%32s\t%255s\t%255s\n",
             &sock_port,
             pid_path,
-            &sock_buf_size,
             &cycle_duration.tv_sec,
             &cycle_duration.tv_nsec,
             peer_lock_id,
@@ -72,7 +69,7 @@ int readSettings() {
             db_data_path,
             db_public_path
             );
-    if (n != 11) {
+    if (n != 10) {
         fclose(stream);
 #ifdef MODE_DEBUG
         fputs("ERROR: readSettings: bad row format\n", stderr);
@@ -81,8 +78,8 @@ int readSettings() {
     }
     fclose(stream);
 #ifdef MODE_DEBUG
-    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tsock_buf_size: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\ti2c_path: %s, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
-            sock_port, pid_path, sock_buf_size, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, i2c_path, device_name, db_data_path, db_public_path);
+    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\ti2c_path: %s, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
+            sock_port, pid_path, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, i2c_path, device_name, db_data_path, db_public_path);
 #endif
     return 1;
 }
@@ -95,7 +92,6 @@ void initApp() {
     if (!readSettings()) {
         exit_nicely_e("initApp: failed to read settings\n");
     }
-    peer_client.sock_buf_size = sock_buf_size;
     if (!initPid(&pid_file, &proc_id, pid_path)) {
         exit_nicely_e("initApp: failed to initialize pid\n");
     }
@@ -109,7 +105,7 @@ void initApp() {
 }
 
 int initData() {
-    if (!config_getPeerList(&peer_list, &sock_fd_tf, sock_buf_size, db_public_path)) {
+    if (!config_getPeerList(&peer_list, &sock_fd_tf, db_public_path)) {
         FREE_LIST(&peer_list);
         return 0;
     }
@@ -128,14 +124,14 @@ int initData() {
         FREE_LIST(&peer_list);
         return 0;
     }
-    i1l.item = (int *) malloc(sock_buf_size * sizeof *(i1l.item));
+    i1l.item = (int *) malloc(pin_list.length * sizeof *(i1l.item));
     if (i1l.item == NULL) {
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
         FREE_LIST(&peer_list);
         return 0;
     }
-    i2l.item = (I2 *) malloc(sock_buf_size * sizeof *(i2l.item));
+    i2l.item = (I2 *) malloc(pin_list.length * sizeof *(i2l.item));
     if (i2l.item == NULL) {
         FREE_LIST(&i1l);
         FREE_LIST(&pin_list);
@@ -143,7 +139,7 @@ int initData() {
         FREE_LIST(&peer_list);
         return 0;
     }
-    if (!createThread_ctl()) {
+    if (!THREAD_CREATE) {
         FREE_LIST(&i2l);
         FREE_LIST(&i1l);
         FREE_LIST(&pin_list);
@@ -155,338 +151,122 @@ int initData() {
 }
 
 void serverRun(int *state, int init_state) {
-    char buf_in[sock_buf_size];
-    char buf_out[sock_buf_size];
-    memset(buf_in, 0, sizeof buf_in);
-    acp_initBuf(buf_out, sizeof buf_out);
-    if (recvfrom(sock_fd, buf_in, sizeof buf_in, 0, (struct sockaddr*) (&(peer_client.addr)), &(peer_client.addr_size)) < 0) {
-#ifdef MODE_DEBUG
-        perror("serverRun: recvfrom() error");
-#endif
+    SERVER_HEADER
+    SERVER_APP_ACTIONS
+    if (
+            ACP_CMD_IS(ACP_CMD_GET_ITS) ||
+            ACP_CMD_IS(ACP_CMD_GWU74_GET_OUT) ||
+            ACP_CMD_IS(ACP_CMD_PROG_GET_DATA_INIT)
+            ) {
+        acp_requestDataToI1List(&request, &i1l, pin_list.length);
+        if (i1l.length <= 0) {
+            return;
+        }
+    } else if (
+            ACP_CMD_IS(ACP_CMD_SET_INT) ||
+            ACP_CMD_IS(ACP_CMD_SET_DUTY_CYCLE_PWM) ||
+            ACP_CMD_IS(ACP_CMD_SET_PWM_PERIOD) ||
+            ACP_CMD_IS(ACP_CMD_GWU74_SET_RSL)
+            ) {
+        acp_requestDataToI2List(&request, &i2l, pin_list.length);
+        if (i2l.length <= 0) {
+            return;
+        }
+    } else {
         return;
     }
-#ifdef MODE_DEBUG
-    acp_dumpBuf(buf_in, sizeof buf_in);
-#endif
-    if (!acp_crc_check(buf_in, sizeof buf_in)) {
-#ifdef MODE_DEBUG
-        fputs("serverRun: crc check failed\n", stderr);
-#endif
+    if (ACP_CMD_IS(ACP_CMD_PROG_GET_DATA_INIT)) {
+        for (int i = 0; i < i1l.length; i++) {
+            Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
+            if (p != NULL) {
+                int done = 0;
+                if (lockPD(&pin_list.item[i])) {
+                    done = bufCatDataInit(p, &response);
+                    unlockPD(&pin_list.item[i]);
+                }
+                if (!done) {
+                    return;
+                }
+            }
+        }
+    } else if (ACP_CMD_IS(ACP_CMD_GET_ITS)) {
+        for (int i = 0; i < i1l.length; i++) {
+            Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
+            if (p != NULL) {
+                if (p->mode == DIO_MODE_IN) {
+                    getIn(p);
+                }
+            }
+        }
+        if (lockPDAll(&device_list, &pin_list)) {
+            readDeviceList(&device_list, &pin_list);
+            unlockPDAll(&device_list, &pin_list);
+        }
+        for (int i = 0; i < i1l.length; i++) {
+            Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
+            if (p != NULL) {
+                int done = 0;
+                if (lockPD(&pin_list.item[i])) {
+                    done = bufCatPinIn(p, &response);
+                    unlockPD(&pin_list.item[i]);
+                }
+                if (!done) {
+                    return;
+                }
+            }
+        }
+    } else if (ACP_CMD_IS(ACP_CMD_GWU74_GET_OUT)) {
+        for (int i = 0; i < i1l.length; i++) {
+            Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
+            if (p != NULL) {
+                int done = 0;
+                if (lockPin(&pin_list.item[i])) {
+                    done = bufCatPinOut(p, &response);
+                    unlockPin(&pin_list.item[i]);
+                }
+                if (!done) {
+                    return;
+                }
+            }
+        }
+    } else if (ACP_CMD_IS(ACP_CMD_SET_INT)) {
+        for (int i = 0; i < i2l.length; i++) {
+            Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
+            if (p != NULL) {
+                setPinOutput(p, i2l.item[i].p1);
+            }
+        }
+        return;
+    } else if (ACP_CMD_IS(ACP_CMD_SET_DUTY_CYCLE_PWM)) {
+        for (int i = 0; i < i2l.length; i++) {
+            Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
+            if (p != NULL) {
+                setPinDutyCyclePWM(p, i2l.item[i].p1);
+            }
+        }
+        return;
+    } else if (ACP_CMD_IS(ACP_CMD_SET_PWM_PERIOD)) {
+        for (int i = 0; i < i2l.length; i++) {
+            Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
+            if (p != NULL) {
+                setPinPeriodPWM(p, i2l.item[i].p1, db_data_path);
+            }
+        }
+        return;
+    } else if (ACP_CMD_IS(ACP_CMD_GWU74_SET_RSL)) {
+        for (int i = 0; i < i2l.length; i++) {
+            Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
+            if (p != NULL) {
+                setPinRslPWM(p, i2l.item[i].p1, db_data_path);
+            }
+        }
         return;
     }
-    switch (buf_in[1]) {
-        case ACP_CMD_APP_START:
-            if (!init_state) {
-                *state = APP_INIT_DATA;
-            }
-            return;
-        case ACP_CMD_APP_STOP:
-            if (init_state) {
-                *state = APP_STOP;
-            }
-            return;
-        case ACP_CMD_APP_RESET:
-            *state = APP_RESET;
-            return;
-        case ACP_CMD_APP_EXIT:
-            *state = APP_EXIT;
-            return;
-        case ACP_CMD_APP_PING:
-            if (init_state) {
-                sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_APP_BUSY);
-            } else {
-                sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_APP_IDLE);
-            }
-            return;
-        case ACP_CMD_APP_PRINT:
-            printData(&device_list, &pin_list);
-            return;
-        case ACP_CMD_APP_HELP:
-            printHelp();
-            return;
-        default:
-            if (!init_state) {
-                return;
-            }
-            break;
-    }
-
-    switch (buf_in[0]) {
-        case ACP_QUANTIFIER_BROADCAST:
-        case ACP_QUANTIFIER_SPECIFIC:
-            break;
-        default:
-            return;
-    }
-
-    switch (buf_in[1]) {
-        case ACP_CMD_GET_INT:
-        case ACP_CMD_GWU74_GET_OUT:
-        case ACP_CMD_GWU74_GET_DATA:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    acp_parsePackI1(buf_in, &i1l, pin_list.length);
-                    if (i1l.length <= 0) {
-                        return;
-                    }
-                    break;
-            }
-
-            break;
-        case ACP_CMD_SET_INT:
-        case ACP_CMD_SET_DUTY_CYCLE_PWM:
-        case ACP_CMD_SET_PWM_PERIOD:
-        case ACP_CMD_GWU74_SET_RSL:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    acp_parsePackI1(buf_in, &i1l, pin_list.length);
-                    if (i1l.length <= 0) {
-                        return;
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    acp_parsePackI2(buf_in, &i2l, pin_list.length);
-                    if (i2l.length <= 0) {
-                        return;
-                    }
-                    break;
-            }
-            break;
-        default:
-            return;
-    }
-#ifdef MODE_DEBUG
-    char *cmd_str = getCmdStrLocal(buf_in[1]);
-    printf("serverRun: local command: %s\n", cmd_str);
-#endif
-    static int i;
-    switch (buf_in[1]) {
-        case ACP_CMD_GWU74_GET_DATA:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    for (i = 0; i < pin_list.length; i++) {
-                        if (lockPD(&pin_list.item[i])) {
-                            int done = 0;
-                            if (!bufCatData(&pin_list.item[i], buf_out, sock_buf_size)) {
-                                sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_BUF_OVERFLOW);
-                                done = 1;
-                            }
-                            unlockPD(&pin_list.item[i]);
-                            if (done) {
-                                return;
-                            }
-                        }
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    for (i = 0; i < i1l.length; i++) {
-                        Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
-                        if (p != NULL) {
-                            int done = 0;
-                            if (lockPD(&pin_list.item[i])) {
-                                if (!bufCatData(p, buf_out, sock_buf_size)) {
-                                    sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_BUF_OVERFLOW);
-                                    done = 1;
-                                }
-                                unlockPD(&pin_list.item[i]);
-                            }
-                            if (done) {
-                                return;
-                            }
-                        }
-
-
-                    }
-                    break;
-            }
-            break;
-        case ACP_CMD_GET_INT:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    for (i = 0; i < pin_list.length; i++) {
-                        if (pin_list.item[i].mode == DIO_MODE_IN) {
-                            if (lockPD(&pin_list.item[i])) {
-                                getIn(&pin_list.item[i]);
-                                unlockPD(&pin_list.item[i]);
-                            }
-                        }
-                    }
-                    if (lockPDAll(&device_list, &pin_list)) {
-                        readDeviceList(&device_list, &pin_list);
-                        unlockPDAll(&device_list, &pin_list);
-                    }
-                    for (i = 0; i < pin_list.length; i++) {
-                        if (lockPD(&pin_list.item[i])) {
-                            int done = 0;
-                            if (!bufCatPinIn(&pin_list.item[i], buf_out, sock_buf_size)) {
-                                sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_BUF_OVERFLOW);
-                                done = 1;
-                            }
-                            unlockPD(&pin_list.item[i]);
-                            if (done) {
-                                return;
-                            }
-                        }
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    for (i = 0; i < i1l.length; i++) {
-                        Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
-                        if (p != NULL) {
-                            if (p->mode == DIO_MODE_IN) {
-                                getIn(p);
-                            }
-                        }
-                    }
-                    if (lockPDAll(&device_list, &pin_list)) {
-                        readDeviceList(&device_list, &pin_list);
-                        unlockPDAll(&device_list, &pin_list);
-                    }
-                    for (i = 0; i < i1l.length; i++) {
-
-                        Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
-                        if (p != NULL) {
-                            if (lockPD(&pin_list.item[i])) {
-                                int done = 0;
-                                if (!bufCatPinIn(p, buf_out, sock_buf_size)) {
-                                    sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_BUF_OVERFLOW);
-                                    done = 1;
-                                }
-                                unlockPD(&pin_list.item[i]);
-                                if (done) {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    break;
-            }
-            break;
-        case ACP_CMD_GWU74_GET_OUT:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    for (i = 0; i < pin_list.length; i++) {
-                        if (lockPin(&pin_list.item[i])) {
-                            int done = 0;
-                            if (!bufCatPinOut(&pin_list.item[i], buf_out, sock_buf_size)) {
-                                sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_BUF_OVERFLOW);
-                                done = 1;
-                            }
-                            unlockPin(&pin_list.item[i]);
-                            if (done) {
-                                return;
-                            }
-                        }
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    for (i = 0; i < i1l.length; i++) {
-                        Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
-                        if (p != NULL) {
-                            if (lockPin(&pin_list.item[i])) {
-                                int done = 0;
-                                if (!bufCatPinOut(p, buf_out, sock_buf_size)) {
-                                    sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_BUF_OVERFLOW);
-                                    done = 1;
-                                }
-                                unlockPin(&pin_list.item[i]);
-                                if (done) {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    break;
-            }
-            break;
-        case ACP_CMD_SET_INT:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    for (i = 0; i < pin_list.length; i++) {
-                        setPinOutput(&pin_list.item[i], i1l.item[0]);
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    for (i = 0; i < i2l.length; i++) {
-                        Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
-                        if (p != NULL) {
-                            setPinOutput(p, i2l.item[i].p1);
-                        }
-                    }
-                    break;
-            }
-            return;
-        case ACP_CMD_SET_DUTY_CYCLE_PWM:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    for (i = 0; i < pin_list.length; i++) {
-                        setPinDutyCyclePWM(&pin_list.item[i], i1l.item[0]);
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    for (i = 0; i < i2l.length; i++) {
-                        Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
-                        if (p != NULL) {
-                            setPinDutyCyclePWM(p, i2l.item[i].p1);
-                        }
-                    }
-                    break;
-            }
-            return;
-        case ACP_CMD_SET_PWM_PERIOD:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    for (i = 0; i < pin_list.length; i++) {
-                        setPinPeriodPWM(&pin_list.item[i], i1l.item[0], db_data_path);
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    for (i = 0; i < i2l.length; i++) {
-                        Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
-                        if (p != NULL) {
-                            setPinPeriodPWM(p, i2l.item[i].p1, db_data_path);
-                        }
-                    }
-                    break;
-            }
-            return;
-        case ACP_CMD_GWU74_SET_RSL:
-            switch (buf_in[0]) {
-                case ACP_QUANTIFIER_BROADCAST:
-                    for (i = 0; i < pin_list.length; i++) {
-                        setPinRslPWM(&pin_list.item[i], i1l.item[0], db_data_path);
-                    }
-                    break;
-                case ACP_QUANTIFIER_SPECIFIC:
-                    for (i = 0; i < i2l.length; i++) {
-                        Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
-                        if (p != NULL) {
-                            setPinRslPWM(p, i2l.item[i].p1, db_data_path);
-                        }
-                    }
-                    break;
-            }
-            return;
-    }
-
-
-    switch (buf_in[1]) {
-        case ACP_CMD_GET_INT:
-        case ACP_CMD_GWU74_GET_OUT:
-        case ACP_CMD_GWU74_GET_DATA:
-            if (!sendBufPack(buf_out, ACP_QUANTIFIER_SPECIFIC, ACP_RESP_REQUEST_SUCCEEDED)) {
-                sendStrPack(ACP_QUANTIFIER_BROADCAST, ACP_RESP_BUF_OVERFLOW);
-            }
-            return;
-    }
-
+    acp_responseSend(&response, &peer_client);
 }
 
 void updateOutSafe(PinList *list) {
-    size_t i;
-    for (i = 0; i < list->length; i++) {
+    for (int i = 0; i < list->length; i++) {
         if (lockPD(&pin_list.item[i])) {
             switch (list->item[i].mode) {
                 case DIO_MODE_IN:
@@ -502,12 +282,11 @@ void updateOutSafe(PinList *list) {
 }
 
 void *threadFunction(void *arg) {
-    char *cmd = (char *) arg;
+    THREAD_DEF_CMD
 #ifndef MODE_DEBUG
-    // setPriorityMax(SCHED_FIFO);
+            // setPriorityMax(SCHED_FIFO);
 #endif
-    size_t i;
-    for (i = 0; i < pin_list.length; i++) {
+            for (int i = 0; i < pin_list.length; i++) {
         if (lockPD(&pin_list.item[i])) {
             setMode(&pin_list.item[i], pin_list.item[i].mode);
             setPUD(&pin_list.item[i], pin_list.item[i].pud);
@@ -521,9 +300,8 @@ void *threadFunction(void *arg) {
     puts("threadFunction: entering while(1) cycle...");
 #endif
     while (1) {
-        size_t i;
         struct timespec t1 = getCurrentTime();
-        for (i = 0; i < pin_list.length; i++) {
+        for (int i = 0; i < pin_list.length; i++) {
             if (pin_list.item[i].mode == DIO_MODE_OUT && pin_list.item[i].out_pwm) {
                 int v = pwmctl(&pin_list.item[i].pwm, pin_list.item[i].duty_cycle);
                 if (tryLockPD(&pin_list.item[i])) {
@@ -536,28 +314,15 @@ void *threadFunction(void *arg) {
         //writing to chips if data changed
         app_writeDeviceList(&device_list);
 
-        switch (*cmd) {
-            case ACP_CMD_APP_STOP:
-            case ACP_CMD_APP_RESET:
-            case ACP_CMD_APP_EXIT:
-                updateOutSafe(&pin_list);
-                app_writeDeviceList(&device_list);
-                *cmd = ACP_CMD_APP_NO;
-                return (EXIT_SUCCESS);
-            default:
-                break;
+        if (*cmd) {
+            updateOutSafe(&pin_list);
+            app_writeDeviceList(&device_list);
+            *cmd = 0;
+            return (EXIT_SUCCESS);
         }
         sleepRest(cycle_duration, t1);
 
     }
-}
-
-int createThread_ctl() {
-    if (pthread_create(&thread, NULL, &threadFunction, (void *) &thread_cmd) != 0) {
-        perror("createThreads: pthread_create");
-        return 0;
-    }
-    return 1;
 }
 
 int initDevice(DeviceList *dl, PinList *pl, char *device) {
@@ -574,14 +339,13 @@ int initDevice(DeviceList *dl, PinList *pl, char *device) {
         done = idle_initDevPin(dl, pl, db_data_path);
     }
     if (done) {
-        size_t i;
-        for (i = 0; i < pl->length; i++) {
+        for (int i = 0; i < pl->length; i++) {
             done = done && initMutex(&pl->item[i].mutex);
             if (!done) {
                 break;
             }
         }
-        for (i = 0; i < dl->length; i++) {
+        for (int i = 0; i < dl->length; i++) {
             done = done && initMutex(&dl->item[i].mutex);
             if (!done) {
                 break;
@@ -599,7 +363,7 @@ void freeData() {
             acp_lck_lock(peer_lock);
         }
     }
-    waitThread_ctl(ACP_CMD_APP_EXIT);
+    THREAD_STOP
     FREE_LIST(&i2l);
     FREE_LIST(&i1l);
     FREE_LIST(&pin_list);

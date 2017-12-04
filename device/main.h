@@ -57,12 +57,14 @@ typedef struct {
     int id_dev; //id within its device
     Device *device;
     int value; //LOW || HIGH
+    int value_state;
     int duty_cycle;
     int mode; //MDOE_IN || MODE_OUT
     int pud;
     PWM pwm;
     int out_pwm; //1-pwm mode
     int out;
+    struct timespec tm;
     Mutex mutex;
 } Pin;
 

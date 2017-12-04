@@ -157,23 +157,6 @@ void pinModeOut(int pin) {
     CFG_REG_VAL = regval;
 }
 
-/*
-void pinPUD(int pin, int pud) {
-    pin = physToGpio[pin];
-    uint32_t regval = 0;
-    int bank = (pin >> 5);
-    int index = pin - (bank << 5);
-    int sub = index >> 4;
-    int sub_index = index - 16 * sub;
-    uint32_t phyaddr = PIO_BASE + (bank * 36) + 0x1c + sub * 4;
-    regval = GPIO_READ(phyaddr);
-    regval &= ~(3 << (sub_index << 1));
-    regval |= (pud << (sub_index << 1));
-    GPIO_WRITE(regval, phyaddr);
-    delayUsIdle(1);
-}
- */
-
 void pinPUD(int pin, int pud) {
     uint32_t regval = 0;
     regval = PULL_REG_VAL;

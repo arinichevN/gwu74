@@ -81,6 +81,8 @@ void mcp23008_readDeviceList(DeviceList *list, PinList *pl) {
                     } else {
                         pl->item[j].value = DIO_HIGH;
                     }
+                    pl->item[j].tm=getCurrentTime();
+                    pl->item[j].value_state=1;
                 }
             }
             list->item[i].read1 = 0;

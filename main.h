@@ -11,6 +11,7 @@
 #include "lib/acp/cmd.h"
 #include "lib/acp/gwu74.h"
 #include "lib/acp/lck.h"
+#include "lib/acp/prog.h"
 #include "lib/udp.h"
 
 

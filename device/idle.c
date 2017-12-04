@@ -35,6 +35,8 @@ void idle_readDeviceList(DeviceList *list, PinList *pl) {
             for (j = 0; j < pl->length; j++) {
                 if (pl->item[j].device->id == list->item[i].id) {
                     pl->item[j].value = DIO_HIGH;
+                    pl->item[j].tm=getCurrentTime();
+                    pl->item[j].value_state=1;
                 }
             }
             list->item[i].read1 = 0;

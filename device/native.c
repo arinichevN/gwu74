@@ -53,6 +53,8 @@ void native_setOut(Pin *pin, int value) {
 
 void native_getIn(Pin *pin) {
     pin->value = pinRead(pin->id_dev);
+    pin->tm=getCurrentTime();
+    pin->value_state=1;
 }
 
 void native_writeDeviceList(DeviceList *list) {

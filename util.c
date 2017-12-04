@@ -142,25 +142,6 @@ char * getPinModeStr(char in) {
     return "?";
 }
 
-char * getCmdStrLocal(char in) {
-    switch (in) {
-        case ACP_CMD_GET_INT:
-            return "ACP_CMD_GET_INT";
-        case ACP_CMD_GWU74_GET_OUT:
-            return "ACP_CMD_GWU74_GET_OUT";
-        case ACP_CMD_GWU74_GET_DATA:
-            return "ACP_CMD_GWU74_GET_DATA";
-        case ACP_CMD_SET_INT:
-            return "ACP_CMD_SET_INT";
-        case ACP_CMD_SET_DUTY_CYCLE_PWM:
-            return "ACP_CMD_SET_DUTY_CYCLE_PWM";
-        case ACP_CMD_SET_PWM_PERIOD:
-            return "ACP_CMD_SET_PWM_PERIOD";
-        case ACP_CMD_GWU74_SET_RSL:
-            return "ACP_CMD_GWU74_SET_RSL";
-    }
-    return "?";
-}
 
 char * getPinPUDStr(char in) {
     switch (in) {
@@ -192,29 +173,22 @@ void savePin(Pin *item, const char *db_path) {
 #endif
 }
 
-int bufCatPinIn(const Pin *item, char *buf, size_t buf_size) {
+int bufCatPinIn(const Pin *item, ACPResponse *response) {
     if (item->mode == DIO_MODE_IN) {
-        char q[LINE_SIZE];
-        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR, item->net_id, item->value);
-        if (bufCat(buf, q, buf_size) == NULL) {
-            return 0;
-        }
+        return acp_responseITSCat(item->net_id, item->value, item->tm, item->value_state, response);
     }
-    return 1;
+    return 0;
 }
 
-int bufCatPinOut(const Pin *item, char *buf, size_t buf_size) {
+int bufCatPinOut(const Pin *item, ACPResponse *response) {
     if (item->mode == DIO_MODE_OUT) {
-        char q[LINE_SIZE];
-        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR, item->net_id, item->out);
-        if (bufCat(buf, q, buf_size) == NULL) {
-            return 0;
-        }
+        struct timespec tm = getCurrentTime();
+        return acp_responseITSCat(item->net_id, item->out, tm, 1, response);
     }
-    return 1;
+    return 0;
 }
 
-int bufCatData(const Pin *item, char *buf, size_t buf_size) {
+int bufCatDataInit(const Pin *item, ACPResponse *response) {
     char q[LINE_SIZE];
     snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_ROW_STR,
             item->net_id,
@@ -223,10 +197,7 @@ int bufCatData(const Pin *item, char *buf, size_t buf_size) {
             item->pwm.period.tv_sec,
             item->pwm.period.tv_nsec
             );
-    if (bufCat(buf, q, buf_size) == NULL) {
-        return 0;
-    }
-    return 1;
+    return acp_responseStrCat(response, q);
 }
 
 void setPinOut(Pin *item, int value) {
@@ -285,27 +256,4 @@ void setPinRslPWM(Pin *item, int value, const char *db_data_path) {
         }
         unlockPin(item);
     }
-}
-
-int sendStrPack(char qnf, char *cmd) {
-    extern Peer peer_client;
-    return acp_sendStrPack(qnf, cmd, &peer_client);
-}
-
-int sendBufPack(char *buf, char qnf, char *cmd_str) {
-    extern Peer peer_client;
-    return acp_sendBufPack(buf, qnf, cmd_str, &peer_client);
-}
-
-void sendStr(const char *s, uint8_t *crc) {
-    acp_sendStr(s, crc, &peer_client);
-}
-
-void sendFooter(int8_t crc) {
-    acp_sendFooter(crc, &peer_client);
-}
-
-void waitThread_ctl(char cmd) {
-    thread_cmd = cmd;
-    pthread_join(thread, NULL);
 }
