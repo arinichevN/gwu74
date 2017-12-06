@@ -29,10 +29,6 @@ void idle_readDeviceList(DeviceList *list, PinList *pl) {
 
 int idle_checkDevPin(DeviceList *dl, PinList *pl) {
     for (size_t i = 0; i < pl->length; i++) {
-        if (pl->item[i].device == NULL) {
-            fprintf(stderr, "ERROR: checkDevPin: no device assigned to pin where net_id = %d\n", pl->item[i].net_id);
-            return 0;
-        }
         if (pl->item[i].mode != DIO_MODE_IN && pl->item[i].mode != DIO_MODE_OUT) {
             fprintf(stderr, "ERROR: checkDevPin: bad mode where net_id = %d\n", pl->item[i].net_id);
             return 0;

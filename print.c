@@ -62,7 +62,6 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
 
     FORLISTP(pl, i) {
-        struct timespec tm_rest = getTimeRestTmr(pl->item[i].secure_out.timeout, pl->item[i].secure_out.tmr);
         snprintf(q, sizeof q, "|%11d|%11p|%11d|%11.11s|%11.11s|%11d|%11d|%11d|%11ld|%11ld|%11u|\n",
                 pl->item[i].net_id,
                 (void *) pl->item[i].device,
@@ -83,7 +82,7 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------------------------------------------------------+\n")
     SEND_STR("|                       pin secure                          |\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+\n")
-    SEND_STR("|  net_id   |  timeout  | time_rest |duty_cycle |   enable  |\n")
+    SEND_STR("|  net_id   | timeout_s |time_rest_s|duty_cycle |   enable  |\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+\n")
     FORLISTP(pl, i) {
         struct timespec tm_rest = getTimeRestTmr(pl->item[i].secure_out.timeout, pl->item[i].secure_out.tmr);

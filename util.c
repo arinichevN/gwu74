@@ -142,7 +142,6 @@ char * getPinModeStr(char in) {
     return "?";
 }
 
-
 char * getPinPUDStr(char in) {
     switch (in) {
         case DIO_PUD_OFF:
@@ -195,9 +194,9 @@ int bufCatDataInit(const Pin *item, ACPResponse *response) {
             getPinModeStr(item->mode),
             getPinPUDStr(item->pud),
             item->pwm.period.tv_sec,
-            item->pwm.period.tv_nsec, 
+            item->pwm.period.tv_nsec,
             item->secure_out.timeout.tv_sec,
-            item->secure_out.duty_cycle, 
+            item->secure_out.duty_cycle,
             item->secure_out.enable
             );
     return acp_responseStrCat(response, q);
@@ -212,28 +211,22 @@ void setPinOut(Pin *item, int value) {
 }
 
 void setPinOutput(Pin *item, int value) {
+    if (item->mode == DIO_MODE_OUT) {
+        item->out_pwm = 0;
+        setPinOut(item, value);
 #ifdef MODE_DEBUG
-    puts("setPinOutput");
+        printf("setPinOutput to %d", value);
 #endif
-    if (lockPD(item)) {
-        if (item->mode == DIO_MODE_OUT) {
-            item->out_pwm = 0;
-            setPinOut(item, value);
-        }
-        unlockPD(item);
     }
 }
 
 void setPinDutyCyclePWM(Pin *item, int value) {
+    if (item->mode == DIO_MODE_OUT) {
+        item->out_pwm = 1;
+        item->duty_cycle = value;
 #ifdef MODE_DEBUG
-    puts("setPinDutyCyclePWM");
+        printf("setPinDutyCyclePWM to %d", value);
 #endif
-    if (lockPD(item)) {
-        if (item->mode == DIO_MODE_OUT) {
-            item->out_pwm = 1;
-            item->duty_cycle = value;
-        }
-        unlockPD(item);
     }
 }
 
@@ -259,4 +252,22 @@ void setPinRslPWM(Pin *item, int value, const char *db_data_path) {
         }
         unlockPin(item);
     }
+}
+
+int needSecure(DOSecure *item) {
+    if (item->enable && !item->done) {
+        if (ton_ts(item->timeout, &item->tmr)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void resetSecure(DOSecure *item) {
+    item->done = 0;
+    item->tmr.ready = 0;
+}
+
+void doneSecure(DOSecure *item) {
+    item->done = 1;
 }

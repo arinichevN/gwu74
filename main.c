@@ -124,13 +124,13 @@ int initData() {
         FREE_LIST(&peer_list);
         return 0;
     }
-    if (!initI1List(&i1l ,pin_list.length)) {
+    if (!initI1List(&i1l, pin_list.length)) {
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
         FREE_LIST(&peer_list);
         return 0;
     }
-    if (!initI2List(&i2l,pin_list.length)) {
+    if (!initI2List(&i2l, pin_list.length)) {
         FREE_LIST(&i1l);
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
@@ -231,8 +231,11 @@ void serverRun(int *state, int init_state) {
         for (int i = 0; i < i2l.length; i++) {
             Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
             if (p != NULL) {
-                setPinOutput(p, i2l.item[i].p1);
-                resetSecure(&p->secure_out);
+                if (lockPin(p)) {
+                    setPinOutput(p, i2l.item[i].p1);
+                    resetSecure(&p->secure_out);
+                    unlockPin(p);
+                }
             }
         }
         return;
@@ -240,8 +243,11 @@ void serverRun(int *state, int init_state) {
         for (int i = 0; i < i2l.length; i++) {
             Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
             if (p != NULL) {
-                setPinDutyCyclePWM(p, i2l.item[i].p1);
-                resetSecure(&p->secure_out);
+                if (lockPin(p)) {
+                    setPinDutyCyclePWM(p, i2l.item[i].p1);
+                    resetSecure(&p->secure_out);
+                    unlockPin(p);
+                }
             }
         }
         return;
@@ -281,21 +287,6 @@ void updateOutSafe(PinList *list) {
     }
 }
 
-int needSecure(DOSecure *item) {
-    if (item->enable && !item->done) {
-        if (ton_ts(item->timeout, &item->tmr)) {
-            item->done = 1;
-            return 1;
-        }
-    }
-    return 0;
-}
-
-void resetSecure(DOSecure *item) {
-    item->done = 0;
-    item->tmr.ready = 0;
-}
-
 void *threadFunction(void *arg) {
     THREAD_DEF_CMD
 #ifndef MODE_DEBUG
@@ -318,15 +309,17 @@ void *threadFunction(void *arg) {
         struct timespec t1 = getCurrentTime();
         for (int i = 0; i < pin_list.length; i++) {
             if (pin_list.item[i].mode == DIO_MODE_OUT) {
-                if (needSecure(&pin_list.item[i].secure_out)) {
-                    setPinDutyCyclePWM(&pin_list.item[i], pin_list.item[i].secure_out.duty_cycle);
-                }
-                if (pin_list.item[i].out_pwm) {
-                    int v = pwmctl(&pin_list.item[i].pwm, pin_list.item[i].duty_cycle);
-                    if (tryLockPD(&pin_list.item[i])) {
-                        setPinOut(&pin_list.item[i], v);
-                        unlockPD(&pin_list.item[i]);
+                if (lockPin(&pin_list.item[i])) {
+                    if (needSecure(&pin_list.item[i].secure_out)) {
+                        pin_list.item[i].out_pwm = 1;
+                        pin_list.item[i].duty_cycle = pin_list.item[i].secure_out.duty_cycle;
+                        doneSecure(&pin_list.item[i].secure_out);
                     }
+                    if (pin_list.item[i].out_pwm) {
+                        int v = pwmctl(&pin_list.item[i].pwm, pin_list.item[i].duty_cycle);
+                        setPinOut(&pin_list.item[i], v);
+                    }
+                    unlockPin(&pin_list.item[i]);
                 }
             }
         }
