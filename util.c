@@ -190,12 +190,15 @@ int bufCatPinOut(const Pin *item, ACPResponse *response) {
 
 int bufCatDataInit(const Pin *item, ACPResponse *response) {
     char q[LINE_SIZE];
-    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_ROW_STR,
+    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR,
             item->net_id,
             getPinModeStr(item->mode),
             getPinPUDStr(item->pud),
             item->pwm.period.tv_sec,
-            item->pwm.period.tv_nsec
+            item->pwm.period.tv_nsec, 
+            item->secure_out.timeout.tv_sec,
+            item->secure_out.duty_cycle, 
+            item->secure_out.enable
             );
     return acp_responseStrCat(response, q);
 }

@@ -858,7 +858,7 @@ int acp_setEMDutyCycle(EM *em, float output) {
             di[0].p0 = em->remote_id;
             di[0].p1 = (int) output;
             I2List data = {di, 1};
-            if (!acp_requestSendUnrequitedI2List(ACP_CMD_SET_DUTY_CYCLE_PWM, &data, em->source)) {
+            if (!acp_requestSendUnrequitedI2List(ACP_CMD_SET_PWM_DUTY_CYCLE, &data, em->source)) {
 #ifdef MODE_DEBUG
                 fprintf(stderr, "acp_setEMDutyCycle(): failed to send request where em.id = %d\n", em->id);
 #endif
@@ -906,7 +906,7 @@ int acp_setEMDutyCycleR(EM *em, float output) {
             di[0].p0 = em->remote_id;
             di[0].p1 = (int) output;
             I2List data = {di, 1};
-            if (!acp_requestSendUnrequitedI2List(ACP_CMD_SET_DUTY_CYCLE_PWM, &data, em->source)) {
+            if (!acp_requestSendUnrequitedI2List(ACP_CMD_SET_PWM_DUTY_CYCLE, &data, em->source)) {
 #ifdef MODE_DEBUG
                 fprintf(stderr, "ERROR: acp_setEMDutyCycle(): failed to send request where em.id = %d\n", em->id);
 #endif

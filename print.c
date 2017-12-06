@@ -2,9 +2,8 @@
 #include "main.h"
 
 void printData(ACPResponse *response) {
-    DeviceList *dl=&device_list;
-    PinList *pl=&pin_list;
-    int i = 0;
+    DeviceList *dl = &device_list;
+    PinList *pl = &pin_list;
     char q[LINE_SIZE];
     snprintf(q, sizeof q, "CONFIG_FILE: %s\n", CONFIG_FILE);
     SEND_STR(q)
@@ -29,13 +28,13 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------+-----------+\n")
     SEND_STR("|    id     |  fd_i2c   |\n")
     SEND_STR("+-----------+-----------+\n")
-    for (i = 0; i < dl->length; i++) {
+    FORLISTP(dl, i) {
         snprintf(q, sizeof q, "|%11d|%11d|\n", dl->item[i].id, dl->item[i].fd_i2c);
         SEND_STR(q)
     }
     SEND_STR("+-----------+-----------+\n")
 
-    for (i = 0; i < dl->length; i++) {
+    FORLISTP(dl, i) {
         snprintf(q, sizeof q, "device id: %d, read1: %x, read2: %x\n", dl->item[i].id, dl->item[i].read1, dl->item[i].read2);
         SEND_STR(q)
         SEND_STR("+---+-----------+-----------+\n")
@@ -61,10 +60,12 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
     SEND_STR("|  net_id   |  device   |   id_dev  |   mode    |   PUD     |    out    |   value   | duty_cycle| period s  | period ns |    rsl    |\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
-    for (i = 0; i < pl->length; i++) {
+
+    FORLISTP(pl, i) {
+        struct timespec tm_rest = getTimeRestTmr(pl->item[i].secure_out.timeout, pl->item[i].secure_out.tmr);
         snprintf(q, sizeof q, "|%11d|%11p|%11d|%11.11s|%11.11s|%11d|%11d|%11d|%11ld|%11ld|%11u|\n",
                 pl->item[i].net_id,
-               (void *) pl->item[i].device,
+                (void *) pl->item[i].device,
                 pl->item[i].id_dev,
                 getPinModeStr(pl->item[i].mode),
                 getPinPUDStr(pl->item[i].pud),
@@ -77,17 +78,35 @@ void printData(ACPResponse *response) {
                 );
         SEND_STR(q)
     }
-    SEND_STR_L("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+    
+    SEND_STR("+-----------------------------------------------------------+\n")
+    SEND_STR("|                       pin secure                          |\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+\n")
+    SEND_STR("|  net_id   |  timeout  | time_rest |duty_cycle |   enable  |\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+\n")
+    FORLISTP(pl, i) {
+        struct timespec tm_rest = getTimeRestTmr(pl->item[i].secure_out.timeout, pl->item[i].secure_out.tmr);
+        snprintf(q, sizeof q, "|%11d|%11ld|%11ld|%11d|%11d|\n",
+                pl->item[i].net_id,
+                pl->item[i].secure_out.timeout.tv_sec,
+                tm_rest.tv_sec,
+                pl->item[i].secure_out.duty_cycle,
+                pl->item[i].secure_out.enable
+                );
+        SEND_STR(q)
+    }
+    SEND_STR_L("+-----------+-----------+-----------+-----------+-----------+\n")
+
 }
 
 void printDevice(DeviceList *list) {
-    size_t i;
     puts("+-----------------------+");
     puts("|        device         |");
     puts("+-----------+-----------+");
     puts("|    id     |  fd_i2c   |");
     puts("+-----------+-----------+");
-    for (i = 0; i < list->length; i++) {
+    FORLISTP(list, i) {
         printf("|%11d|%11d|\n",
                 list->item[i].id,
                 list->item[i].fd_i2c
@@ -97,16 +116,15 @@ void printDevice(DeviceList *list) {
 }
 
 void printPin(PinList *list) {
-    size_t i;
     puts("+-----------------------------------------------------------------------------------------------------------+");
     puts("|                                                      pin                                                  |");
     puts("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+");
     puts("|   net_id  |  device   |   id_dev  |   mode    |    PUD    |   value   | duty_cycle| period s  |    rsl    |");
     puts("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+");
-    for (i = 0; i < list->length; i++) {
+     FORLISTP(list, i) {
         printf("|%11d|%11p|%11d|%11.11s|%11.11s|%11d|%11d|%11ld|%11u|\n",
                 list->item[i].net_id,
-               (void *) list->item[i].device,
+                (void *) list->item[i].device,
                 list->item[i].id_dev,
                 getPinModeStr(list->item[i].mode),
                 getPinPUDStr(list->item[i].pud),
@@ -145,7 +163,7 @@ void printHelp(ACPResponse *response) {
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tset output pin state; pin net_id expected\n", ACP_CMD_SET_INT);
     SEND_STR(q)
-    snprintf(q, sizeof q, "%s\tset duty cycle; dutyCycle expected; pin net_id expected\n", ACP_CMD_SET_DUTY_CYCLE_PWM);
+    snprintf(q, sizeof q, "%s\tset duty cycle; dutyCycle expected; pin net_id expected\n", ACP_CMD_SET_PWM_DUTY_CYCLE);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tset PWM period (usec); PWMPeriod expected; pin net_id expected\n", ACP_CMD_SET_PWM_PERIOD);
     SEND_STR(q)

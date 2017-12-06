@@ -53,6 +53,14 @@ typedef struct {
 DEF_LIST(Device)
 
 typedef struct {
+    int enable;
+   struct timespec timeout;
+   int duty_cycle;
+   Ton_ts tmr;
+   int done;
+}DOSecure;
+
+typedef struct {
     int net_id; //this id will be used for interprocess communication
     int id_dev; //id within its device
     Device *device;
@@ -62,6 +70,7 @@ typedef struct {
     int mode; //MDOE_IN || MODE_OUT
     int pud;
     PWM pwm;
+    DOSecure secure_out;
     int out_pwm; //1-pwm mode
     int out;
     struct timespec tm;

@@ -49,8 +49,7 @@ void pcf8574_getIn(Pin *pin) {
 }
 
 void pcf8574_writeDeviceList(DeviceList *list) {
-    int i;
-    for (i = 0; i < list->length; i++) {
+    FORLISTP(list, i) {
         if (list->item[i].new_data1 != list->item[i].old_data1) {
             I2CWrite(list->item[i].fd_i2c, list->item[i].new_data1);
             list->item[i].old_data1 = list->item[i].new_data1;
@@ -59,11 +58,10 @@ void pcf8574_writeDeviceList(DeviceList *list) {
 }
 
 void pcf8574_readDeviceList(DeviceList *list, PinList *pl) {
-    int i, j;
-    for (i = 0; i < list->length; i++) {
+   FORLISTP(list, i) {
         if (list->item[i].read1) {
             int value = I2CRead(list->item[i].fd_i2c);
-            for (j = 0; j < pl->length; j++) {
+            for (size_t j = 0; j < pl->length; j++) {
                 if (pl->item[j].device->id == list->item[i].id && pl->item[j].mode == DIO_MODE_IN) {
                     int mask = 1 << (pl->item[j].id_dev & 7);
                     if ((value & mask) == 0) {
@@ -81,8 +79,7 @@ void pcf8574_readDeviceList(DeviceList *list, PinList *pl) {
 }
 
 int pcf8574_checkData(DeviceList *dl, PinList *pl) {
-    size_t i, j;
-    for (i = 0; i < pl->length; i++) {
+    FORLISTP(pl, i) {
         if (pl->item[i].id_dev < 0 || pl->item[i].id_dev >= PCF8574_DEVICE_PIN_NUM) {
             fprintf(stderr, "ERROR: checkData: bad id_within_device where net_id = %d\n", pl->item[i].net_id);
             return 0;
@@ -108,16 +105,16 @@ int pcf8574_checkData(DeviceList *dl, PinList *pl) {
             return 0;
         }
     }
-    for (i = 0; i < pl->length; i++) {
-        for (j = i + 1; j < pl->length; j++) {
+    FORLISTP(pl, i) {
+        for (size_t j = i + 1; j < pl->length; j++) {
             if (pl->item[i].net_id == pl->item[j].net_id) {
                 fprintf(stderr, "ERROR: checkData: net_id is not unique where net_id = %d\n", pl->item[i].net_id);
                 return 0;
             }
         }
     }
-    for (i = 0; i < pl->length; i++) {
-        for (j = i + 1; j < pl->length; j++) {
+    FORLISTP(pl, i) {
+        for (size_t j = i + 1; j < pl->length; j++) {
             if (pl->item[i].id_dev == pl->item[j].id_dev && pl->item[i].device->id == pl->item[j].device->id) {
                 fprintf(stderr, "ERROR: checkData: id_within_device is not unique where net_id = %d\n", pl->item[i].net_id);
                 return 0;
@@ -141,7 +138,6 @@ int pcf8574_initDevPin(DeviceList *dl, PinList *pl, const char *db_path, char *i
     if (!db_open(db_path, &db)) {
         return 0;
     }
-    size_t i;
     int n = 0;
     char q[LINE_SIZE];
     db_getInt(&n, db, "select count(*) from device");
@@ -170,7 +166,7 @@ int pcf8574_initDevPin(DeviceList *dl, PinList *pl, const char *db_path, char *i
         sqlite3_close(db);
         return 0;
     }
-    for (i = 0; i < dl->length; i++) {
+    for (size_t i = 0; i < dl->length; i++) {
         if (dl->item[i].fd_i2c == -1) {
             putse("pcf8574_initDevPin: I2COpen failed\n");
             sqlite3_close(db);
@@ -201,13 +197,17 @@ int pcf8574_initDevPin(DeviceList *dl, PinList *pl, const char *db_path, char *i
     memset(pl->item, 0, n * sizeof *(pl->item));
     pl->length = 0;
     PinData datap = {pl, dl};
-    snprintf(q, sizeof q, "select net_id, device_id, id_within_device, mode, pud, pwm_period_sec, pwm_period_nsec from pin limit %d", PCF8574_MAX_PIN_NUM);
+    snprintf(q, sizeof q, PIN_QUERY_STR, PCF8574_MAX_PIN_NUM);
     if (!db_exec(db, q, getPin_callback, (void*) &datap)) {
         printfe("pcf8574_initDevPin: query failed: %s\n", q);
         sqlite3_close(db);
         return 0;
     }
-
+    if (pl->length != n) {
+        printfe("pcf8574_initDevPin: %ld != %ld\n", pl->length, n);
+        sqlite3_close(db);
+        return 0;
+    }
     sqlite3_close(db);
     if (!pcf8574_checkData(dl, pl)) {
         return 0;
@@ -220,7 +220,6 @@ int pcf8574_initDevPin(DeviceList *dl, PinList *pl, const char *db_path, char *i
 int pcf8574_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_class, char *i2c_path) {
     PGresult *r;
     char q[LINE_SIZE];
-    size_t i;
     snprintf(q, sizeof q, "select id, addr_i2c from " APP_NAME_STR ".device where app_class='%s' limit %d", app_class, PCF8574_MAX_DEV_NUM);
     if ((r = dbGetDataT(db_conn, q, q)) == NULL) {
         return 0;
@@ -233,7 +232,7 @@ int pcf8574_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_c
             PQclear(r);
             return 0;
         }
-        for (i = 0; i < dl->length; i++) {
+        for (size_t i = 0; i < dl->length; i++) {
             memset(&dl->item[i], 0, sizeof dl->item[i]);
             dl->item[i].id = atoi(PQgetvalue(r, i, 0));
             dl->item[i].fd_i2c = I2COpen(i2c_path, atoi(PQgetvalue(r, i, 1)));
@@ -264,7 +263,7 @@ int pcf8574_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_c
             PQclear(r);
             return 0;
         }
-        for (i = 0; i < pl->length; i++) {
+        for (size_t i = 0; i < pl->length; i++) {
             memset(&pl->item[i], 0, sizeof pl->item[i]);
             pl->item[i].net_id = atoi(PQgetvalue(r, i, 0));
             pl->item[i].device = getDeviceBy_id(atoi(PQgetvalue(r, i, 1)), dl);

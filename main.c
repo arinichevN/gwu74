@@ -124,15 +124,13 @@ int initData() {
         FREE_LIST(&peer_list);
         return 0;
     }
-    i1l.item = (int *) malloc(pin_list.length * sizeof *(i1l.item));
-    if (i1l.item == NULL) {
+    if (!initI1List(&i1l ,pin_list.length)) {
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
         FREE_LIST(&peer_list);
         return 0;
     }
-    i2l.item = (I2 *) malloc(pin_list.length * sizeof *(i2l.item));
-    if (i2l.item == NULL) {
+    if (!initI2List(&i2l,pin_list.length)) {
         FREE_LIST(&i1l);
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
@@ -164,7 +162,7 @@ void serverRun(int *state, int init_state) {
         }
     } else if (
             ACP_CMD_IS(ACP_CMD_SET_INT) ||
-            ACP_CMD_IS(ACP_CMD_SET_DUTY_CYCLE_PWM) ||
+            ACP_CMD_IS(ACP_CMD_SET_PWM_DUTY_CYCLE) ||
             ACP_CMD_IS(ACP_CMD_SET_PWM_PERIOD) ||
             ACP_CMD_IS(ACP_CMD_GWU74_SET_RSL)
             ) {
@@ -234,14 +232,16 @@ void serverRun(int *state, int init_state) {
             Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
             if (p != NULL) {
                 setPinOutput(p, i2l.item[i].p1);
+                resetSecure(&p->secure_out);
             }
         }
         return;
-    } else if (ACP_CMD_IS(ACP_CMD_SET_DUTY_CYCLE_PWM)) {
+    } else if (ACP_CMD_IS(ACP_CMD_SET_PWM_DUTY_CYCLE)) {
         for (int i = 0; i < i2l.length; i++) {
             Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
             if (p != NULL) {
                 setPinDutyCyclePWM(p, i2l.item[i].p1);
+                resetSecure(&p->secure_out);
             }
         }
         return;
@@ -281,6 +281,21 @@ void updateOutSafe(PinList *list) {
     }
 }
 
+int needSecure(DOSecure *item) {
+    if (item->enable && !item->done) {
+        if (ton_ts(item->timeout, &item->tmr)) {
+            item->done = 1;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void resetSecure(DOSecure *item) {
+    item->done = 0;
+    item->tmr.ready = 0;
+}
+
 void *threadFunction(void *arg) {
     THREAD_DEF_CMD
 #ifndef MODE_DEBUG
@@ -302,15 +317,19 @@ void *threadFunction(void *arg) {
     while (1) {
         struct timespec t1 = getCurrentTime();
         for (int i = 0; i < pin_list.length; i++) {
-            if (pin_list.item[i].mode == DIO_MODE_OUT && pin_list.item[i].out_pwm) {
-                int v = pwmctl(&pin_list.item[i].pwm, pin_list.item[i].duty_cycle);
-                if (tryLockPD(&pin_list.item[i])) {
-                    setPinOut(&pin_list.item[i], v);
-                    unlockPD(&pin_list.item[i]);
+            if (pin_list.item[i].mode == DIO_MODE_OUT) {
+                if (needSecure(&pin_list.item[i].secure_out)) {
+                    setPinDutyCyclePWM(&pin_list.item[i], pin_list.item[i].secure_out.duty_cycle);
+                }
+                if (pin_list.item[i].out_pwm) {
+                    int v = pwmctl(&pin_list.item[i].pwm, pin_list.item[i].duty_cycle);
+                    if (tryLockPD(&pin_list.item[i])) {
+                        setPinOut(&pin_list.item[i], v);
+                        unlockPD(&pin_list.item[i]);
+                    }
                 }
             }
         }
-
         //writing to chips if data changed
         app_writeDeviceList(&device_list);
 

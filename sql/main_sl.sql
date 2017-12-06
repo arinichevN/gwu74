@@ -14,5 +14,8 @@ CREATE TABLE "pin"
   "pud" TEXT NOT NULL, -- up || down || off
   "rsl" INTEGER NOT NULL,--max duty cycle
   "pwm_period_sec" INTEGER NOT NULL,
-  "pwm_period_nsec" INTEGER NOT NULL
+  "pwm_period_nsec" INTEGER NOT NULL,
+  "secure_timeout_sec" INTEGER NOT NULL, -- if secure_enable, we will set this pin to PWM mode with secure_duty_cycle after we have no requests to this pin while secure_timeout_sec is running
+  "secure_duty_cycle" INTEGER NOT NULL, -- 0...rsl
+  "secure_enable" INTEGER NOT NULL, -- 1 || 0
 );

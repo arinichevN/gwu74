@@ -282,13 +282,17 @@ int mcp23008_initDevPin(DeviceList *dl, PinList *pl, const char *db_path, char *
     memset(pl->item, 0, n * sizeof *(pl->item));
     pl->length = 0;
     PinData datap = {pl, dl};
-    snprintf(q, sizeof q, "select net_id, device_id, id_within_device, mode, pud, rsl, pwm_period_sec, pwm_period_nsec from pin limit %d", MCP23008_MAX_PIN_NUM);
+    snprintf(q, sizeof q, PIN_QUERY_STR, MCP23008_MAX_PIN_NUM);
     if (!db_exec(db, q, getPin_callback, (void*) &datap)) {
         printfe("mcp23008_initDevPin: query failed: %s\n", q);
         sqlite3_close(db);
         return 0;
     }
-
+    if (pl->length != n) {
+        printfe("mcp23008_initDevPin: %ld != %ld\n", pl->length, n);
+        sqlite3_close(db);
+        return 0;
+    }
     sqlite3_close(db);
     if (!mcp23008_checkData(dl, pl)) {
         return 0;

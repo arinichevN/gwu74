@@ -53,8 +53,8 @@ void native_setOut(Pin *pin, int value) {
 
 void native_getIn(Pin *pin) {
     pin->value = pinRead(pin->id_dev);
-    pin->tm=getCurrentTime();
-    pin->value_state=1;
+    pin->tm = getCurrentTime();
+    pin->value_state = 1;
 }
 
 void native_writeDeviceList(DeviceList *list) {
@@ -66,8 +66,7 @@ void native_readDeviceList(DeviceList *list, PinList *pl) {
 }
 
 int native_checkData(PinList *list) {
-    size_t i, j;
-    for (i = 0; i < list->length; i++) {
+    for (size_t i = 0; i < list->length; i++) {
         if (!checkPin(list->item[i].id_dev)) {
             fprintf(stderr, "ERROR: checkData: bad id_within_device where net_id = %d\n", list->item[i].net_id);
             return 0;
@@ -89,16 +88,16 @@ int native_checkData(PinList *list) {
             return 0;
         }
     }
-    for (i = 0; i < list->length; i++) {
-        for (j = i + 1; j < list->length; j++) {
+    for (size_t i = 0; i < list->length; i++) {
+        for (size_t j = i + 1; j < list->length; j++) {
             if (list->item[i].net_id == list->item[j].net_id) {
                 fprintf(stderr, "ERROR: checkData: net_id is not unique where net_id = %d\n", list->item[i].net_id);
                 return 0;
             }
         }
     }
-    for (i = 0; i < list->length; i++) {
-        for (j = i + 1; j < list->length; j++) {
+    for (size_t i = 0; i < list->length; i++) {
+        for (size_t j = i + 1; j < list->length; j++) {
             if (list->item[i].id_dev == list->item[j].id_dev) {
                 fprintf(stderr, "ERROR: checkPin: id_within_device is not unique where net_id = %d\n", list->item[i].net_id);
                 return 0;
@@ -124,7 +123,6 @@ void native_setPtf() {
 int native_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_class) {
     PGresult *r;
     char q[LINE_SIZE];
-    size_t i;
     snprintf(q, sizeof q, "select net_id, id_within_device, mode, pud, rsl, pwm_period_sec, pwm_period_nsec from " APP_NAME_STR ".pin where app_class='%s' limit %d", app_class, NATIVE_MAX_PIN_NUM);
     if ((r = dbGetDataT(db_conn, q, q)) == NULL) {
         return 0;
@@ -137,7 +135,7 @@ int native_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_cl
             PQclear(r);
             return 0;
         }
-        for (i = 0; i < pl->length; i++) {
+        for (size_t i = 0; i < pl->length; i++) {
             memset(&pl->item[i], 0,sizeof pl->item[i]);
             pl->item[i].net_id = atoi(PQgetvalue(r, i, 0));
             pl->item[i].id_dev = atoi(PQgetvalue(r, i, 1));
@@ -160,7 +158,53 @@ int native_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_cl
 }
  */
 
+
 int native_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
-    putse("not emplemented yet");
-    return 0;
+    sqlite3 *db;
+    if (!db_open(db_path, &db)) {
+        return 0;
+    }
+    int n = 0;
+    char q[LINE_SIZE];
+        dl->length = 0;
+    dl->item = NULL;
+    db_getInt(&n, db, "select count(*) from pin");
+    if (n <= 0) {
+        putse("native_initDevPin: query failed: select count(*) from pin\n");
+        sqlite3_close(db);
+        return 0;
+    }
+    pl->item = (Pin *) malloc(n * sizeof *(pl->item));
+    if (pl->item == NULL) {
+        putse("native_initDevPin: failed to allocate memory for pins\n");
+        sqlite3_close(db);
+        return 0;
+    }
+    memset(pl->item, 0, n * sizeof *(pl->item));
+    pl->length = 0;
+    PinData datap = {pl, dl};
+    snprintf(q, sizeof q, PIN_QUERY_STR, NATIVE_MAX_PIN_NUM);
+    if (!db_exec(db, q, getPin_callback, (void*) &datap)) {
+        printfe("native_initDevPin: query failed: %s\n", q);
+        sqlite3_close(db);
+        return 0;
+    }
+    if (pl->length != n) {
+        printfe("native_initDevPin: %ld != %d\n", dl->length, n);
+        sqlite3_close(db);
+        return 0;
+    }
+    for (size_t i = 0; i < pl->length; i++) {
+        pl->item[i].device = NULL;
+    }
+    sqlite3_close(db);
+
+    if (!native_checkData(pl)) {
+        return 0;
+    }
+    if (!gpioSetup()) {
+        return 0;
+    }
+    native_setPtf();
+    return 1;
 }

@@ -1,52 +1,34 @@
 
+#include "main.h"
+
+
 void idle_setMode(Pin *pin, int mode) {
-    pin->device->new_data1++;
+    ;
 }
 
 void idle_setPUD(Pin *pin, int pud) {
-    pin->device->new_data1++;
+    ;
 }
-
-//call writeDeviceList() function after this function and then data will be written to chip
 
 void idle_setOut(Pin *pin, int value) {
-    pin->device->new_data1++;
+    ;
 }
 
-//call readDeviceList() after this function and then pin->value will be updated
 
 void idle_getIn(Pin *pin) {
-    pin->device->read1 = 1;
+    ;
 }
 
 void idle_writeDeviceList(DeviceList *list) {
-    int i;
-    for (i = 0; i < list->length; i++) {
-        if (list->item[i].new_data1 != list->item[i].old_data1) {
-            list->item[i].old_data1 = list->item[i].new_data1;
-        }
-    }
+;
 }
 
 void idle_readDeviceList(DeviceList *list, PinList *pl) {
-    int i, j;
-    for (i = 0; i < list->length; i++) {
-        if (list->item[i].read1) {
-            for (j = 0; j < pl->length; j++) {
-                if (pl->item[j].device->id == list->item[i].id) {
-                    pl->item[j].value = DIO_HIGH;
-                    pl->item[j].tm=getCurrentTime();
-                    pl->item[j].value_state=1;
-                }
-            }
-            list->item[i].read1 = 0;
-        }
-    }
+;
 }
 
 int idle_checkDevPin(DeviceList *dl, PinList *pl) {
-    size_t i, j;
-    for (i = 0; i < pl->length; i++) {
+    for (size_t i = 0; i < pl->length; i++) {
         if (pl->item[i].device == NULL) {
             fprintf(stderr, "ERROR: checkDevPin: no device assigned to pin where net_id = %d\n", pl->item[i].net_id);
             return 0;
@@ -68,18 +50,10 @@ int idle_checkDevPin(DeviceList *dl, PinList *pl) {
             return 0;
         }
     }
-    for (i = 0; i < pl->length; i++) {
-        for (j = i + 1; j < pl->length; j++) {
+    for (size_t i = 0; i < pl->length; i++) {
+        for (size_t j = i + 1; j < pl->length; j++) {
             if (pl->item[i].net_id == pl->item[j].net_id) {
                 fprintf(stderr, "ERROR: checkDevPin: net_id is not unique where net_id = %d\n", pl->item[i].net_id);
-                return 0;
-            }
-        }
-    }
-    for (i = 0; i < pl->length; i++) {
-        for (j = i + 1; j < pl->length; j++) {
-            if (pl->item[i].id_dev == pl->item[j].id_dev && pl->item[i].device->id == pl->item[j].device->id) {
-                fprintf(stderr, "ERROR: checkPin: id_within_device is not unique where net_id = %d\n", pl->item[i].net_id);
                 return 0;
             }
         }
@@ -98,60 +72,15 @@ void idle_setPtf() {
     readDeviceList = idle_readDeviceList;
 }
 
-int idle_getDevice_callback(void *data, int argc, char **argv, char **azColName) {
-    DeviceData *device_data = data;
-    for (int i = 0; i < argc; i++) {
-        if (strcmp("id", azColName[i]) == 0) {
-            device_data->list->item[device_data->list->length].id = atoi(argv[i]);
-        } else {
-            putse("idle_getDevice_callback: unknown column\n");
-            device_data->list->length++;
-            return 1;
-        }
-    }
-    device_data->list->length++;
-    return 0;
-}
-
 int idle_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
     sqlite3 *db;
     if (!db_open(db_path, &db)) {
         return 0;
     }
-    size_t i;
     int n = 0;
     char q[LINE_SIZE];
-    db_getInt(&n, db, "select count(*) from device");
-    db_getInt(&n, db, q);
-    if (n <= 0) {
-        putse("idle_initDevPin: query failed: select count(*) from device\n");
-        sqlite3_close(db);
-        return 0;
-    }
     dl->length = 0;
-    dl->item = (Device *) malloc(n * sizeof *(dl->item));
-    if (dl->item == NULL) {
-        putse("ERROR: idle_initDevPin: failed to allocate memory for devices\n");
-        sqlite3_close(db);
-        return 0;
-    }
-    memset(dl->item, 0, n * sizeof *(dl->item));
-    DeviceData data = {dl, NULL};
-    snprintf(q, sizeof q, "select id from device limit %d", IDLE_MAX_DEV_NUM);
-    if (!db_exec(db, q, idle_getDevice_callback, (void*) &data)) {
-        printfe("idle_initDevPin: query failed: %s\n", q);
-        sqlite3_close(db);
-        return 0;
-    }
-    if (dl->length != n) {
-        printfe("idle_initDevPin: %ld != %ld\n", dl->length, n);
-        sqlite3_close(db);
-        return 0;
-    }
-    for (i = 0; i < dl->length; i++) {
-        dl->item[i].old_data1 = 0;
-        dl->item[i].new_data1 = dl->item[i].old_data1;
-    }
+    dl->item = NULL;
 
     n = 0;
     db_getInt(&n, db, "select count(*) from pin");
@@ -169,13 +98,20 @@ int idle_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
     memset(pl->item, 0, n * sizeof *(pl->item));
     pl->length = 0;
     PinData datap = {pl, dl};
-    snprintf(q, sizeof q, "select net_id, device_id, id_within_device, mode, pud, rsl, pwm_period_sec, pwm_period_nsec from pin limit %d", IDLE_MAX_PIN_NUM);
+    snprintf(q, sizeof q, PIN_QUERY_STR, IDLE_MAX_PIN_NUM);
     if (!db_exec(db, q, getPin_callback, (void*) &datap)) {
         printfe("idle_initDevPin: query failed: %s\n", q);
         sqlite3_close(db);
         return 0;
     }
-
+    if (pl->length != n) {
+        printfe("idle_initDevPin: %ld != %d\n", dl->length, n);
+        sqlite3_close(db);
+        return 0;
+    }
+        for (size_t i = 0; i < pl->length; i++) {
+            pl->item[i].device=NULL;
+        }
     sqlite3_close(db);
     if (!idle_checkDevPin(dl, pl)) {
         return 0;
@@ -189,7 +125,6 @@ int idle_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
 int idle_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_class) {
     PGresult *r;
     char q[LINE_SIZE];
-    size_t i;
     snprintf(q, sizeof q, "select id, addr_i2c from " APP_NAME_STR ".device where app_class='%s' limit %d", app_class, IDLE_MAX_DEV_NUM);
     if ((r = dbGetDataT(db_conn, q, q)) == NULL) {
         return 0;
@@ -202,7 +137,7 @@ int idle_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_clas
             PQclear(r);
             return 0;
         }
-        for (i = 0; i < dl->length; i++) {
+        for (size_t i = 0; i < dl->length; i++) {
             memset(&dl->item[i], 0,sizeof dl->item[i]);
             dl->item[i].id = atoi(PQgetvalue(r, i, 0));
             dl->item[i].fd_i2c = atoi(PQgetvalue(r, i, 1));
@@ -223,7 +158,7 @@ int idle_initDevPin(DeviceList *dl, PinList *pl, PGconn *db_conn, char *app_clas
             PQclear(r);
             return 0;
         }
-        for (i = 0; i < pl->length; i++) {
+        for (size_t i = 0; i < pl->length; i++) {
             memset(&pl->item[i], 0,sizeof pl->item[i]);
             pl->item[i].net_id = atoi(PQgetvalue(r, i, 0));
             pl->item[i].device = getDeviceBy_id(atoi(PQgetvalue(r, i, 1)), dl);
