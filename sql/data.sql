@@ -1,10 +1,8 @@
-
 CREATE TABLE "device"
 (
   "id" INTEGER PRIMARY KEY,
   "addr_i2c" INTEGER NOT NULL-- to get chip address in hex format (for Banana Pi): i2cdetect -y -a 2; convert it to decimal and put here 
 );
-
 CREATE TABLE "pin"
 (
   "net_id" INTEGER NOT NULL,
