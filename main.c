@@ -1,12 +1,8 @@
-/*
- * UDP gateway for discrete input/output
- */
-
 #include "main.h"
 
 char pid_path[LINE_SIZE];
 char i2c_path[LINE_SIZE];
-char hostname[HOST_NAME_MAX];
+
 int app_state = APP_INIT;
 int sock_port = -1;
 int sock_fd = -1; //udp socket file descriptor
@@ -25,8 +21,8 @@ char db_public_path[LINE_SIZE];
 
 DEF_THREAD
 
-I1List i1l = {NULL, 0};
-I2List i2l = {NULL, 0};
+I1List i1l;
+I2List i2l;
 DeviceList device_list = {NULL, 0};
 PinList pin_list = {NULL, 0};
 
@@ -85,7 +81,6 @@ int readSettings() {
 }
 
 void initApp() {
-    readHostName(hostname);
 #ifdef MODE_DEBUG
     printf("initApp: \n\tCONFIG_FILE: %s\n", CONFIG_FILE);
 #endif
@@ -156,7 +151,7 @@ void serverRun(int *state, int init_state) {
             ACP_CMD_IS(ACP_CMD_GWU74_GET_OUT) ||
             ACP_CMD_IS(ACP_CMD_PROG_GET_DATA_INIT)
             ) {
-        acp_requestDataToI1List(&request, &i1l, pin_list.length);
+        acp_requestDataToI1List(&request, &i1l);
         if (i1l.length <= 0) {
             return;
         }
@@ -166,7 +161,7 @@ void serverRun(int *state, int init_state) {
             ACP_CMD_IS(ACP_CMD_SET_PWM_PERIOD) ||
             ACP_CMD_IS(ACP_CMD_GWU74_SET_RSL)
             ) {
-        acp_requestDataToI2List(&request, &i2l, pin_list.length);
+        acp_requestDataToI2List(&request, &i2l);
         if (i2l.length <= 0) {
             return;
         }

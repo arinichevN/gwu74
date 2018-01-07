@@ -50,7 +50,7 @@ typedef struct {
     Mutex mutex;
 } Device;
 
-DEF_LIST(Device)
+DEC_LIST(Device)
 
 typedef struct {
     int enable;
@@ -77,7 +77,7 @@ typedef struct {
     Mutex mutex;
 } Pin;
 
-DEF_LIST(Pin)
+DEC_LIST(Pin)
 
 extern void (*setMode)(Pin *, int);
 extern void (*setPUD)(Pin *, int);
