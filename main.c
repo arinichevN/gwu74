@@ -147,7 +147,7 @@ void serverRun(int *state, int init_state) {
     SERVER_HEADER
     SERVER_APP_ACTIONS
     if (
-            ACP_CMD_IS(ACP_CMD_GET_ITS) ||
+            ACP_CMD_IS(ACP_CMD_GET_FTS) ||
             ACP_CMD_IS(ACP_CMD_GWU74_GET_OUT) ||
             ACP_CMD_IS(ACP_CMD_PROG_GET_DATA_INIT)
             ) {
@@ -182,7 +182,7 @@ void serverRun(int *state, int init_state) {
                 }
             }
         }
-    } else if (ACP_CMD_IS(ACP_CMD_GET_ITS)) {
+    } else if (ACP_CMD_IS(ACP_CMD_GET_FTS)) {
         for (int i = 0; i < i1l.length; i++) {
             Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
             if (p != NULL) {

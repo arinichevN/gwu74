@@ -174,7 +174,7 @@ void savePin(Pin *item, const char *db_path) {
 
 int bufCatPinIn(const Pin *item, ACPResponse *response) {
     if (item->mode == DIO_MODE_IN) {
-        return acp_responseITSCat(item->net_id, item->value, item->tm, item->value_state, response);
+        return acp_responseFTSCat(item->net_id, (float) item->value, item->tm, item->value_state, response);
     }
     return 0;
 }
