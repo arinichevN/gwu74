@@ -15,24 +15,28 @@ void printData(ACPResponse *response) {
     SEND_STR(q)
     snprintf(q, sizeof q, "cycle_duration nsec: %ld\n", cycle_duration.tv_nsec);
     SEND_STR(q)
-    snprintf(q, sizeof q, "i2c_path: %s\n", i2c_path);
-    SEND_STR(q)
     snprintf(q, sizeof q, "device_name: %s\n", device_name);
     SEND_STR(q)
     snprintf(q, sizeof q, "app_state: %s\n", getAppState(app_state));
     SEND_STR(q)
     snprintf(q, sizeof q, "PID: %d\n", proc_id);
+
     SEND_STR(q)
-    SEND_STR("+-----------------------+\n")
-    SEND_STR("|        device         |\n")
-    SEND_STR("+-----------+-----------+\n")
-    SEND_STR("|    id     |  fd_i2c   |\n")
-    SEND_STR("+-----------+-----------+\n")
+    SEND_STR("+----------------------------------------------------+\n")
+    SEND_STR("|                         device                     |\n")
+    SEND_STR("+-----------+----------------+-----------+-----------+\n")
+    SEND_STR("|    id     |     i2c_path   | i2c_addr  |  i2c_fd   |\n")
+    SEND_STR("+-----------+----------------+-----------+-----------+\n")
     FORLISTP(dl, i) {
-        snprintf(q, sizeof q, "|%11d|%11d|\n", dl->item[i].id, dl->item[i].fd_i2c);
+        snprintf(q, sizeof q, "|%11d|%16s|%11d|%11d|\n",
+                dl->item[i].id,
+                dl->item[i].i2c_path,
+                dl->item[i].i2c_addr,
+                dl->item[i].i2c_fd
+                );
         SEND_STR(q)
     }
-    SEND_STR("+-----------+-----------+\n")
+    SEND_STR("+-----------+----------------+-----------+-----------+\n")
 
     FORLISTP(dl, i) {
         snprintf(q, sizeof q, "device id: %d, read1: %x, read2: %x\n", dl->item[i].id, dl->item[i].read1, dl->item[i].read2);
@@ -77,8 +81,9 @@ void printData(ACPResponse *response) {
                 );
         SEND_STR(q)
     }
+
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
-    
+
     SEND_STR("+-----------------------------------------------------------+\n")
     SEND_STR("|                       pin secure                          |\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+\n")
@@ -99,42 +104,6 @@ void printData(ACPResponse *response) {
 
 }
 
-void printDevice(DeviceList *list) {
-    puts("+-----------------------+");
-    puts("|        device         |");
-    puts("+-----------+-----------+");
-    puts("|    id     |  fd_i2c   |");
-    puts("+-----------+-----------+");
-    FORLISTP(list, i) {
-        printf("|%11d|%11d|\n",
-                list->item[i].id,
-                list->item[i].fd_i2c
-                );
-    }
-    puts("+-----------+-----------+");
-}
-
-void printPin(PinList *list) {
-    puts("+-----------------------------------------------------------------------------------------------------------+");
-    puts("|                                                      pin                                                  |");
-    puts("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+");
-    puts("|   net_id  |  device   |   id_dev  |   mode    |    PUD    |   value   | duty_cycle| period s  |    rsl    |");
-    puts("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+");
-     FORLISTP(list, i) {
-        printf("|%11d|%11p|%11d|%11.11s|%11.11s|%11d|%11d|%11ld|%11u|\n",
-                list->item[i].net_id,
-                (void *) list->item[i].device,
-                list->item[i].id_dev,
-                getPinModeStr(list->item[i].mode),
-                getPinPUDStr(list->item[i].pud),
-                list->item[i].value,
-                list->item[i].duty_cycle,
-                list->item[i].pwm.period.tv_sec,
-                list->item[i].pwm.rsl
-                );
-    }
-    puts("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+");
-}
 
 void printHelp(ACPResponse *response) {
     char q[LINE_SIZE];

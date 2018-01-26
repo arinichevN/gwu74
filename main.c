@@ -1,7 +1,6 @@
 #include "main.h"
 
 char pid_path[LINE_SIZE];
-char i2c_path[LINE_SIZE];
 
 int app_state = APP_INIT;
 int sock_port = -1;
@@ -53,19 +52,18 @@ int readSettings() {
     }
     skipLine(stream);
     int n;
-    n = fscanf(stream, "%d\t%255s\t%ld\t%ld\t%32s\t%d\t%255s\t%32s\t%255s\t%255s\n",
+    n = fscanf(stream, "%d\t%255s\t%ld\t%ld\t%32s\t%d\t%32s\t%255s\t%255s\n",
             &sock_port,
             pid_path,
             &cycle_duration.tv_sec,
             &cycle_duration.tv_nsec,
             peer_lock_id,
             &use_lock,
-            i2c_path,
             device_name,
             db_data_path,
             db_public_path
             );
-    if (n != 10) {
+    if (n != 9) {
         fclose(stream);
 #ifdef MODE_DEBUG
         fputs("ERROR: readSettings: bad row format\n", stderr);
@@ -74,8 +72,8 @@ int readSettings() {
     }
     fclose(stream);
 #ifdef MODE_DEBUG
-    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\ti2c_path: %s, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
-            sock_port, pid_path, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, i2c_path, device_name, db_data_path, db_public_path);
+    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
+            sock_port, pid_path, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, device_name, db_data_path, db_public_path);
 #endif
     return 1;
 }
@@ -335,11 +333,11 @@ void *threadFunction(void *arg) {
 int initDevice(DeviceList *dl, PinList *pl, char *device) {
     int done = 0;
     if (strcmp(DEVICE_MCP23008_STR, device) == 0) {
-        done = mcp23008_initDevPin(dl, pl, db_data_path, i2c_path);
+        done = mcp23008_initDevPin(dl, pl, db_data_path);
     } else if (strcmp(DEVICE_MCP23017_STR, device) == 0) {
-        done = mcp23017_initDevPin(dl, pl, db_data_path, i2c_path);
+        done = mcp23017_initDevPin(dl, pl, db_data_path);
     } else if (strcmp(DEVICE_PCF8574_STR, device) == 0) {
-        done = pcf8574_initDevPin(dl, pl, db_data_path, i2c_path);
+        done = pcf8574_initDevPin(dl, pl, db_data_path);
     } else if (strcmp(DEVICE_NATIVE_STR, device) == 0) {
         done = native_initDevPin(dl, pl, db_data_path);
     } else if (strcmp(DEVICE_IDLE_STR, device) == 0) {
@@ -418,49 +416,34 @@ int main(int argc, char** argv) {
 #endif
     int data_initialized = 0;
     while (1) {
+#ifdef MODE_DEBUG
+        printf("main(): %s %d\n", getAppState(app_state), data_initialized);
+#endif
         switch (app_state) {
             case APP_INIT:
-#ifdef MODE_DEBUG
-                puts("MAIN: init");
-#endif
                 initApp();
                 app_state = APP_INIT_DATA;
                 break;
             case APP_INIT_DATA:
-#ifdef MODE_DEBUG
-                puts("MAIN: init data");
-#endif
                 data_initialized = initData();
                 app_state = APP_RUN;
                 delayUsIdle(1000);
                 break;
             case APP_RUN:
-#ifdef MODE_DEBUG
-                puts("MAIN: run");
-#endif
                 serverRun(&app_state, data_initialized);
                 break;
             case APP_STOP:
-#ifdef MODE_DEBUG
-                puts("MAIN: stop");
-#endif
                 freeData();
                 data_initialized = 0;
                 app_state = APP_RUN;
                 break;
             case APP_RESET:
-#ifdef MODE_DEBUG
-                puts("MAIN: reset");
-#endif
                 freeApp();
                 delayUsIdle(1000000);
                 data_initialized = 0;
                 app_state = APP_INIT;
                 break;
             case APP_EXIT:
-#ifdef MODE_DEBUG
-                puts("MAIN: exit");
-#endif
                 exit_nicely();
                 break;
             default:

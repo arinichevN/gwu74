@@ -32,7 +32,9 @@
 
 typedef struct {
     int id;
-    int fd_i2c;
+    int i2c_fd;
+    int i2c_addr;
+    char i2c_path[LINE_SIZE];
     int new_data1;
     int old_data1;
     int new_data2;
@@ -70,7 +72,7 @@ typedef struct {
     int mode; //MDOE_IN || MODE_OUT
     int pud;
     PWM pwm;
-    DOSecure secure_out;
+    DOSecure secure_out;//we will set output pins to save state after no signal has been received from master during particular time
     int out_pwm; //1-pwm mode
     int out;
     struct timespec tm;

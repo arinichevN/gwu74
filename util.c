@@ -215,7 +215,7 @@ void setPinOutput(Pin *item, int value) {
         item->out_pwm = 0;
         setPinOut(item, value);
 #ifdef MODE_DEBUG
-        printf("setPinOutput to %d", value);
+        printf("%s(): pin %d output %d\n", __FUNCTION__, item->net_id, value);
 #endif
     }
 }
@@ -225,7 +225,7 @@ void setPinDutyCyclePWM(Pin *item, int value) {
         item->out_pwm = 1;
         item->duty_cycle = value;
 #ifdef MODE_DEBUG
-        printf("setPinDutyCyclePWM to %d", value);
+        printf("%s(): pin %d pwm %d\n", __FUNCTION__, item->net_id, value);
 #endif
     }
 }
