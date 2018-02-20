@@ -128,8 +128,8 @@ void mcp23017_readDeviceList(DeviceList *list, PinList *pl) {
                     } else {
                         pl->item[j].value = DIO_HIGH;
                     }
-                    pl->item[j].tm=getCurrentTime();
-                     pl->item[j].value_state=1;
+                    pl->item[j].tm = getCurrentTime();
+                    pl->item[j].value_state = 1;
                 }
             }
             list->item[i].read1 = 0;
@@ -145,8 +145,8 @@ void mcp23017_readDeviceList(DeviceList *list, PinList *pl) {
                     } else {
                         pl->item[j].value = DIO_HIGH;
                     }
-                    pl->item[j].tm=getCurrentTime();
-                    pl->item[j].value_state=1;
+                    pl->item[j].tm = getCurrentTime();
+                    pl->item[j].value_state = 1;
                 }
             }
             list->item[i].read2 = 0;
@@ -158,34 +158,34 @@ int mcp23017_checkData(DeviceList *dl, PinList *pl) {
     size_t i, j;
     for (i = 0; i < pl->length; i++) {
         if (pl->item[i].id_dev < 0 || pl->item[i].id_dev >= MCP23017_DEVICE_PIN_NUM) {
-            fprintf(stderr, "ERROR: checkData: bad id_within_device where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad id_within_device where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].device == NULL) {
-            fprintf(stderr, "ERROR: checkData: no device assigned to pin where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): no device assigned to pin where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].mode != DIO_MODE_IN && pl->item[i].mode != DIO_MODE_OUT) {
-            fprintf(stderr, "ERROR: checkData: bad mode where net_id = %d (in or out expected)\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad mode where net_id = %d (in or out expected)\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].pud != DIO_PUD_OFF && pl->item[i].pud != DIO_PUD_UP) {
-            fprintf(stderr, "ERROR: checkData: bad PUD where net_id = %d (up or off expected)\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad PUD where net_id = %d (up or off expected)\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].pwm.period.tv_sec < 0 || pl->item[i].pwm.period.tv_nsec < 0) {
-            fprintf(stderr, "ERROR: checkData: bad pwm_period where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad pwm_period where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].pwm.rsl < 0) {
-            fprintf(stderr, "ERROR: checkData: bad rsl where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad rsl where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
     }
     for (i = 0; i < pl->length; i++) {
         for (j = i + 1; j < pl->length; j++) {
             if (pl->item[i].net_id == pl->item[j].net_id) {
-                fprintf(stderr, "ERROR: checkData: net_id is not unique where net_id = %d\n", pl->item[i].net_id);
+                fprintf(stderr, "%s(): net_id is not unique where net_id = %d\n",F, pl->item[i].net_id);
                 return 0;
             }
         }
@@ -193,7 +193,7 @@ int mcp23017_checkData(DeviceList *dl, PinList *pl) {
     for (i = 0; i < pl->length; i++) {
         for (j = i + 1; j < pl->length; j++) {
             if (pl->item[i].id_dev == pl->item[j].id_dev && pl->item[i].device->id == pl->item[j].device->id) {
-                fprintf(stderr, "ERROR: checkData: id_within_device is not unique where net_id = %d\n", pl->item[i].net_id);
+                fprintf(stderr, "%s(): id_within_device is not unique where net_id = %d\n",F, pl->item[i].net_id);
                 return 0;
             }
         }
@@ -211,30 +211,36 @@ void mcp23017_setPtf() {
 }
 
 int mcp23017_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
-        if (!initDevPin(dl, pl, IDLE_MAX_DEV_NUM, IDLE_MAX_PIN_NUM, db_path)) {
+    if (!initDevPin(dl, pl, IDLE_MAX_DEV_NUM, IDLE_MAX_PIN_NUM, db_path)) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): initDevPin\n", F);
 #endif
         return 0;
     }
     for (int i = 0; i < dl->length; i++) {
         dl->item[i].i2c_fd = I2COpen(dl->item[i].i2c_path, dl->item[i].i2c_addr);
         if (dl->item[i].i2c_fd == -1) {
-            putse("mcp23017_initDevPin: I2COpen failed\n");
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): I2COpen\n", F);
+#endif
             return 0;
         }
         I2CWriteReg8(dl->item[i].i2c_fd, MCP23x17_IOCON, IOCON_INIT);
 
         dl->item[i].old_data1 = I2CReadReg8(dl->item[i].i2c_fd, MCP23x17_OLATA);
         if (dl->item[i].old_data1 == -1) {
-            putse("ERROR: initDevPin: I2CReadReg8 1\n");
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): I2CReadReg8 1\n", F);
+#endif
             return 0;
         }
         dl->item[i].new_data1 = dl->item[i].old_data1;
 
         dl->item[i].old_data2 = I2CReadReg8(dl->item[i].i2c_fd, MCP23x17_OLATB);
         if (dl->item[i].old_data2 == -1) {
-            putse("ERROR: initDevPin: I2CReadReg8 2\n");
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): I2CReadReg8 2\n", F);
+#endif
             return 0;
         }
         dl->item[i].new_data2 = dl->item[i].old_data2;
@@ -242,14 +248,18 @@ int mcp23017_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
         //mode
         dl->item[i].old_data3 = I2CReadReg8(dl->item[i].i2c_fd, MCP23x17_IODIRA);
         if (dl->item[i].old_data3 == -1) {
-            putse("ERROR: initDevPin: I2CReadReg8 3\n");
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): I2CReadReg8 3\n", F);
+#endif
             return 0;
         }
         dl->item[i].new_data3 = dl->item[i].old_data3;
 
         dl->item[i].old_data4 = I2CReadReg8(dl->item[i].i2c_fd, MCP23x17_IODIRB);
         if (dl->item[i].old_data4 == -1) {
-            putse("ERROR: initDevPin: I2CReadReg8 4\n");
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): I2CReadReg8 4\n", F);
+#endif
             return 0;
         }
         dl->item[i].new_data4 = dl->item[i].old_data4;
@@ -257,14 +267,18 @@ int mcp23017_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
         //pud
         dl->item[i].old_data5 = I2CReadReg8(dl->item[i].i2c_fd, MCP23x17_GPPUA);
         if (dl->item[i].old_data5 == -1) {
-            putse("ERROR: initDevPin: I2CReadReg8 5\n");
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): I2CReadReg8 5\n", F);
+#endif
             return 0;
         }
         dl->item[i].new_data5 = dl->item[i].old_data5;
 
         dl->item[i].old_data6 = I2CReadReg8(dl->item[i].i2c_fd, MCP23x17_GPPUB);
         if (dl->item[i].old_data6 == -1) {
-            putse("ERROR: initDevPin: I2CReadReg8 6\n");
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): I2CReadReg8 6\n", F);
+#endif
             return 0;
         }
         dl->item[i].new_data6 = dl->item[i].old_data6;

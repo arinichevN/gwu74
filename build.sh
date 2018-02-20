@@ -4,10 +4,9 @@ APP_DBG=`printf "%s_dbg" "$APP"`
 INST_DIR=/usr/sbin
 CONF_DIR=/etc/controller
 CONF_DIR_APP=$CONF_DIR/$APP
-PID_DIR=/var/run
 
 #DEBUG_PARAM="-Wall -pedantic"
-DEBUG_PARAM="-Wall"
+DEBUG_PARAM="-Wall -pedantic -g"
 MODE_DEBUG=-DMODE_DEBUG
 MODE_FULL=-DMODE_FULL
 
@@ -51,20 +50,20 @@ function conf_autostart {
 
 function build_lib {
 	gcc $1 $CPU -c app.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
-	gcc $1 $CPU -c crc.c $DEBUG_PARAM && \
-	gcc $1 $CPU -c dbl.c -DSQLITE_THREADSAFE=2 -DSQLITE_OMIT_LOAD_EXTENSION $DEBUG_PARAM -lsqlite3 && \
-	gcc $1 $CPU -c configl.c -DSQLITE_THREADSAFE=2 -DSQLITE_OMIT_LOAD_EXTENSION $DEBUG_PARAM -lsqlite3 && \
-	gcc $1 $CPU -c timef.c $DEBUG_PARAM && \
-	gcc $1 $CPU -c udp.c $DEBUG_PARAM && \
-	gcc $1 $CPU -c util.c $DEBUG_PARAM && \
-	gcc $1 $CPU $PINOUT -c gpio.c $DEBUG_PARAM && \
-	gcc $1 $CPU -c pm.c $DEBUG_PARAM && \
-	gcc $1 $CPU -c pwm.c $DEBUG_PARAM && \
-	gcc $1 $CPU -c i2c.c $DEBUG_PARAM && \
+	gcc $1 $CPU -c crc.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $CPU -c dbl.c -D_REENTRANT -DSQLITE_THREADSAFE=2 -DSQLITE_OMIT_LOAD_EXTENSION $DEBUG_PARAM -lsqlite3 -lpthread && \
+	gcc $1 $CPU -c configl.c -D_REENTRANT -DSQLITE_THREADSAFE=2 -DSQLITE_OMIT_LOAD_EXTENSION $DEBUG_PARAM -lsqlite3 -lpthread && \
+	gcc $1 $CPU -c timef.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $CPU -c udp.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $CPU -c util.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $CPU $PINOUT -c gpio.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $CPU -c pm.c -D_REENTRANT $DEBUG_PARAM  -lpthread && \
+	gcc $1 $CPU -c pwm.c -D_REENTRANT $DEBUG_PARAM -lpthread &&  \
+	gcc $1 $CPU -c i2c.c -D_REENTRANT $DEBUG_PARAM -lpthread &&  \
 	
 	cd acp && \
-	gcc $1 $CPU -c main.c $DEBUG_PARAM && \
-	gcc $1 $CPU -c lck.c $DEBUG_PARAM && \
+	gcc $1 $CPU -c main.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $CPU -c lck.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	cd ../ && \
 	echo "library: making archive..." && \
 	rm -f libpac.a

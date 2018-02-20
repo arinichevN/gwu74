@@ -1,13 +1,9 @@
 #include "main.h"
 
-char pid_path[LINE_SIZE];
-
 int app_state = APP_INIT;
 int sock_port = -1;
 int sock_fd = -1; //udp socket file descriptor
 int sock_fd_tf = -1;
-int pid_file = -1;
-int proc_id = -1;
 struct timespec cycle_duration = {0, 0};
 
 PeerList peer_list = {NULL, 0};
@@ -20,8 +16,6 @@ char db_public_path[LINE_SIZE];
 
 DEF_THREAD
 
-I1List i1l;
-I2List i2l;
 DeviceList device_list = {NULL, 0};
 PinList pin_list = {NULL, 0};
 
@@ -46,15 +40,15 @@ int readSettings() {
     FILE* stream = fopen(CONFIG_FILE, "r");
     if (stream == NULL) {
 #ifdef MODE_DEBUG
-        perror("readSettings()");
+        fprintf(stderr, "%s(): ", __func__);
+        perror("fopen()");
 #endif
         return 0;
     }
     skipLine(stream);
     int n;
-    n = fscanf(stream, "%d\t%255s\t%ld\t%ld\t%32s\t%d\t%32s\t%255s\t%255s\n",
+    n = fscanf(stream, "%d\t%ld\t%ld\t%32s\t%d\t%32s\t%255s\t%255s\n",
             &sock_port,
-            pid_path,
             &cycle_duration.tv_sec,
             &cycle_duration.tv_nsec,
             peer_lock_id,
@@ -63,30 +57,24 @@ int readSettings() {
             db_data_path,
             db_public_path
             );
-    if (n != 9) {
+    if (n != 8) {
         fclose(stream);
 #ifdef MODE_DEBUG
-        fputs("ERROR: readSettings: bad row format\n", stderr);
+        fprintf(stderr, "%s(): bad row format\n", F);
 #endif
         return 0;
     }
     fclose(stream);
 #ifdef MODE_DEBUG
-    printf("readSettings: \n\tsock_port: %d, \n\tpid_path: %s, \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
-            sock_port, pid_path, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, device_name, db_data_path, db_public_path);
+    printf("%s(): \n\tsock_port: %d \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
+            F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, device_name, db_data_path, db_public_path);
 #endif
     return 1;
 }
 
 void initApp() {
-#ifdef MODE_DEBUG
-    printf("initApp: \n\tCONFIG_FILE: %s\n", CONFIG_FILE);
-#endif
     if (!readSettings()) {
         exit_nicely_e("initApp: failed to read settings\n");
-    }
-    if (!initPid(&pid_file, &proc_id, pid_path)) {
-        exit_nicely_e("initApp: failed to initialize pid\n");
     }
     if (!initServer(&sock_fd, sock_port)) {
         exit_nicely_e("initApp: failed to initialize udp server\n");
@@ -99,14 +87,14 @@ void initApp() {
 
 int initData() {
     if (!config_getPeerList(&peer_list, &sock_fd_tf, db_public_path)) {
-        FREE_LIST(&peer_list);
+        freePeerList(&peer_list);
         return 0;
     }
     if (use_lock) {
         Peer *peer_lock = NULL;
         peer_lock = getPeerById(peer_lock_id, &peer_list);
         if (peer_lock == NULL) {
-            FREE_LIST(&peer_list);
+            freePeerList(&peer_list);
             return 0;
         }
         acp_lck_waitUnlock(peer_lock, LOCK_COM_INTERVAL);
@@ -114,28 +102,13 @@ int initData() {
     if (!initDevice(&device_list, &pin_list, device_name)) {
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
-        FREE_LIST(&peer_list);
-        return 0;
-    }
-    if (!initI1List(&i1l, pin_list.length)) {
-        FREE_LIST(&pin_list);
-        FREE_LIST(&device_list);
-        FREE_LIST(&peer_list);
-        return 0;
-    }
-    if (!initI2List(&i2l, pin_list.length)) {
-        FREE_LIST(&i1l);
-        FREE_LIST(&pin_list);
-        FREE_LIST(&device_list);
-        FREE_LIST(&peer_list);
+        freePeerList(&peer_list);
         return 0;
     }
     if (!THREAD_CREATE) {
-        FREE_LIST(&i2l);
-        FREE_LIST(&i1l);
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
-        FREE_LIST(&peer_list);
+        freePeerList(&peer_list);
         return 0;
     }
     return 1;
@@ -144,6 +117,8 @@ int initData() {
 void serverRun(int *state, int init_state) {
     SERVER_HEADER
     SERVER_APP_ACTIONS
+    DEF_SERVER_I1LIST
+    DEF_SERVER_I2LIST
     if (
             ACP_CMD_IS(ACP_CMD_GET_FTS) ||
             ACP_CMD_IS(ACP_CMD_GWU74_GET_OUT) ||
@@ -369,18 +344,15 @@ void freeData() {
         }
     }
     THREAD_STOP
-    FREE_LIST(&i2l);
-    FREE_LIST(&i1l);
     FREE_LIST(&pin_list);
     FREE_LIST(&device_list);
-    FREE_LIST(&peer_list);
+    freePeerList(&peer_list);
 }
 
 void freeApp() {
     freeData();
     freeSocketFd(&sock_fd);
     freeSocketFd(&sock_fd_tf);
-    freePid(&pid_file, &proc_id, pid_path);
 }
 
 void exit_nicely() {
@@ -409,7 +381,10 @@ int main(int argc, char** argv) {
 #endif
     conSig(&exit_nicely);
     if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {
-        perror("main: memory locking failed");
+#ifdef MODE_DEBUG
+        fprintf(stderr, "%s(): ", __func__);
+        perror("mlockall()");
+#endif
     }
 #ifndef MODE_DEBUG
     //  setPriorityMax(SCHED_FIFO);
@@ -417,7 +392,7 @@ int main(int argc, char** argv) {
     int data_initialized = 0;
     while (1) {
 #ifdef MODE_DEBUG
-        printf("main(): %s %d\n", getAppState(app_state), data_initialized);
+        printf("%s(): %s %d\n", __func__, getAppState(app_state), data_initialized);
 #endif
         switch (app_state) {
             case APP_INIT:

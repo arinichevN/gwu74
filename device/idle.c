@@ -26,28 +26,28 @@ void idle_readDeviceList(DeviceList *list, PinList *pl) {
 }
 
 int idle_checkDevPin(DeviceList *dl, PinList *pl) {
-    for (size_t i = 0; i < pl->length; i++) {
+    for (int i = 0; i < pl->length; i++) {
         if (pl->item[i].mode != DIO_MODE_IN && pl->item[i].mode != DIO_MODE_OUT) {
-            fprintf(stderr, "ERROR: checkDevPin: bad mode where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad mode where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].pud != DIO_PUD_OFF && pl->item[i].pud != DIO_PUD_UP && pl->item[i].pud != DIO_PUD_DOWN) {
-            fprintf(stderr, "ERROR: checkDevPin: bad PUD where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad PUD where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].pwm.period.tv_sec < 0 || pl->item[i].pwm.period.tv_nsec < 0) {
-            fprintf(stderr, "ERROR: checkDevPin: bad pwm_period where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad pwm_period where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
         if (pl->item[i].pwm.rsl < 0) {
-            fprintf(stderr, "ERROR: checkData: bad rsl where net_id = %d\n", pl->item[i].net_id);
+            fprintf(stderr, "%s(): bad rsl where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
     }
-    for (size_t i = 0; i < pl->length; i++) {
-        for (size_t j = i + 1; j < pl->length; j++) {
+    for (int i = 0; i < pl->length; i++) {
+        for (int j = i + 1; j < pl->length; j++) {
             if (pl->item[i].net_id == pl->item[j].net_id) {
-                fprintf(stderr, "ERROR: checkDevPin: net_id is not unique where net_id = %d\n", pl->item[i].net_id);
+                fprintf(stderr, "%s(): net_id is not unique where net_id = %d\n",F, pl->item[i].net_id);
                 return 0;
             }
         }
@@ -69,7 +69,7 @@ void idle_setPtf() {
 int idle_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
     if (!initDevPin(dl, pl, IDLE_MAX_DEV_NUM, IDLE_MAX_PIN_NUM, db_path)) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): failed\n", F);
 #endif
         return 0;
     }

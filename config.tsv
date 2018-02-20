@@ -1,2 +1,2 @@
-port	PID_path	cycle_duration_sec	cycle_duration_nsec	peer_lock_id	use_lock	device_name	private_db_file	public_db_file
-49163	/var/run/gwu74.pid	0	3000000	lck_1	0	idle	/etc/controller/gwu74/data.db	/etc/controller/public.db
+port	cycle_duration_sec	cycle_duration_nsec	peer_lock_id	use_lock	device_name	private_db_file	public_db_file
+49163	0	3000000	lck_1	0	idle	/etc/controller/gwu74/data.db	/etc/controller/public.db

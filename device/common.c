@@ -30,14 +30,15 @@ int getDevice_callback(void *data, int argc, char **argv, char **azColName) {
             c++;
         } else {
 #ifdef MODE_DEBUG
-            fprintf(stderr, "%s(): unknown column\n", __FUNCTION__);
+            fprintf(stderr, "%s(): unknown column\n", F);
 #endif
+            c++;
         }
     }
     device_data->list->length++;
 #define N 3
     if (c != N) {
-        fprintf(stderr, "%s(): required %d columns but %d found\n", __FUNCTION__, N, c);
+        fprintf(stderr, "%s(): required %d columns but %d found\n", F, N, c);
         return EXIT_FAILURE;
     }
 #undef N
@@ -85,14 +86,15 @@ int getPin_callback(void *data, int argc, char **argv, char **azColName) {
             c++;
         } else {
 #ifdef MODE_DEBUG
-            fprintf(stderr, "%s(): unknown column\n", __FUNCTION__);
+            fprintf(stderr, "%s(): unknown column\n", F);
 #endif
+            c++;
         }
     }
     d->list->length++;
 #define N 11
     if (c != N) {
-        fprintf(stderr, "%s(): required %d columns but %d found\n", __FUNCTION__, N, c);
+        fprintf(stderr, "%s(): required %d columns but %d found\n", F, N, c);
         return EXIT_FAILURE;
     }
 #undef N
@@ -108,20 +110,20 @@ int initDevPin(DeviceList *dl, PinList *pl, int device_count_max, int pin_count_
     char q[LINE_SIZE];
     if (!db_getInt(&n, db, "select count(*) from device")) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): failed\n", F);
 #endif
         return 0;
     }
     if (n <= 0 || n > device_count_max) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): device count: %d, but should be >0 and <=%d\n", __FUNCTION__, n, device_count_max);
+        fprintf(stderr, "%s(): device count: %d, but should be >0 and <=%d\n", F, n, device_count_max);
 #endif
         sqlite3_close(db);
         return 0;
     }
     if (!initDeviceList(dl, n)) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): failed\n", F);
 #endif
         return 0;
     }
@@ -130,14 +132,14 @@ int initDevPin(DeviceList *dl, PinList *pl, int device_count_max, int pin_count_
     snprintf(q, sizeof q, "select id, i2c_path, i2c_addr from device limit %d", device_count_max);
     if (!db_exec(db, q, getDevice_callback, &data)) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): failed\n", F);
 #endif
         sqlite3_close(db);
         return 0;
     }
     if (dl->length != n) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): device found: %u, but expected: %d\n", __FUNCTION__, dl->length, n);
+        fprintf(stderr, "%s(): device found: %u, but expected: %d\n", F, dl->length, n);
 #endif
         sqlite3_close(db);
         return 0;
@@ -146,20 +148,20 @@ int initDevPin(DeviceList *dl, PinList *pl, int device_count_max, int pin_count_
     n = 0;
     if (!db_getInt(&n, db, "select count(*) from pin")) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): failed\n", F);
 #endif
         return 0;
     }
     if (n <= 0 || n > pin_count_max) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): device pin count: %d, but should be >0 and <=%d\n", __FUNCTION__, n, pin_count_max);
+        fprintf(stderr, "%s(): device pin count: %d, but should be >0 and <=%d\n", F, n, pin_count_max);
 #endif
         sqlite3_close(db);
         return 0;
     }
     if (!initPinList(pl, n)) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): failed\n", F);
 #endif
         return 0;
     }
@@ -168,7 +170,7 @@ int initDevPin(DeviceList *dl, PinList *pl, int device_count_max, int pin_count_
     snprintf(q, sizeof q, PIN_QUERY_STR, pin_count_max);
     if (!db_exec(db, q, getPin_callback, &datap)) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): failed\n", __FUNCTION__);
+        fprintf(stderr, "%s(): failed\n", F);
 #endif
         sqlite3_close(db);
         return 0;
@@ -176,7 +178,7 @@ int initDevPin(DeviceList *dl, PinList *pl, int device_count_max, int pin_count_
     sqlite3_close(db);
     if (pl->length != n) {
 #ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): pins found: %u, but expected: %d\n", __FUNCTION__, dl->length, n);
+        fprintf(stderr, "%s(): pins found: %u, but expected: %d\n", F, dl->length, n);
 #endif
         return 0;
     }
