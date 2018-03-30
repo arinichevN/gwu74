@@ -58,8 +58,8 @@ void initApp() {
     if (!readSettings(&config_tsv, CONFIG_FILE, &sock_port, &cycle_duration, &device_name, &db_data_path)) {
         exit_nicely_e("initApp: failed to read settings\n");
     }
-    #ifdef MODE_DEBUG
-    printf("%s(): \n\tsock_port: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tdevice_name: %s, \n\tdb_data_path: %s\n", F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec,device_name, db_data_path);
+#ifdef MODE_DEBUG
+    printf("%s(): \n\tsock_port: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tdevice_name: %s, \n\tdb_data_path: %s\n", F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec, device_name, db_data_path);
 #endif
     if (!initServer(&sock_fd, sock_port)) {
         exit_nicely_e("initApp: failed to initialize udp server\n");
@@ -315,6 +315,7 @@ void freeApp() {
     freeData();
     freeSocketFd(&sock_fd);
     freeSocketFd(&sock_fd_tf);
+    TSVclear(&config_tsv);
 }
 
 void exit_nicely() {
