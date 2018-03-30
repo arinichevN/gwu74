@@ -6,18 +6,15 @@ int sock_fd = -1; //udp socket file descriptor
 int sock_fd_tf = -1;
 struct timespec cycle_duration = {0, 0};
 
-PeerList peer_list = {NULL, 0};
 Peer peer_client = {.fd = &sock_fd, .addr_size = sizeof peer_client.addr};
-char peer_lock_id[NAME_SIZE];
-int use_lock = 0;
+
 char device_name[NAME_SIZE];
 char db_data_path[LINE_SIZE];
-char db_public_path[LINE_SIZE];
 
 DEF_THREAD
 
-DeviceList device_list = {NULL, 0};
-PinList pin_list = {NULL, 0};
+DeviceList device_list = LIST_INITIALIZER;
+PinList pin_list = LIST_INITIALIZER;
 
 void (*setMode)(Pin *, int);
 void (*setPUD)(Pin *, int);
@@ -47,17 +44,14 @@ int readSettings() {
     }
     skipLine(stream);
     int n;
-    n = fscanf(stream, "%d\t%ld\t%ld\t%32s\t%d\t%32s\t%255s\t%255s\n",
+    n = fscanf(stream, "%d\t%ld\t%ld\t%32s\t%255s\n",
             &sock_port,
             &cycle_duration.tv_sec,
             &cycle_duration.tv_nsec,
-            peer_lock_id,
-            &use_lock,
             device_name,
-            db_data_path,
-            db_public_path
+            db_data_path
             );
-    if (n != 8) {
+    if (n != 5) {
         fclose(stream);
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): bad row format\n", F);
@@ -66,8 +60,8 @@ int readSettings() {
     }
     fclose(stream);
 #ifdef MODE_DEBUG
-    printf("%s(): \n\tsock_port: %d \n\tcycle_duration: %ld sec %ld nsec, \n\tpeer_lock_id: %s, \n\tuse_lock: %d, \n\tdevice_name: %s, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n",
-            F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec, peer_lock_id, use_lock, device_name, db_data_path, db_public_path);
+    printf("%s(): \n\tsock_port: %d \n\tcycle_duration: %ld sec %ld nsec, \n\tdevice_name: %s, \n\tdb_data_path: %s\n",
+            F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec, device_name, db_data_path);
 #endif
     return 1;
 }
@@ -86,29 +80,14 @@ void initApp() {
 }
 
 int initData() {
-    if (!config_getPeerList(&peer_list, &sock_fd_tf, db_public_path)) {
-        freePeerList(&peer_list);
-        return 0;
-    }
-    if (use_lock) {
-        Peer *peer_lock = NULL;
-        peer_lock = getPeerById(peer_lock_id, &peer_list);
-        if (peer_lock == NULL) {
-            freePeerList(&peer_list);
-            return 0;
-        }
-        acp_lck_waitUnlock(peer_lock, LOCK_COM_INTERVAL);
-    }
     if (!initDevice(&device_list, &pin_list, device_name)) {
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
-        freePeerList(&peer_list);
         return 0;
     }
     if (!THREAD_CREATE) {
         FREE_LIST(&pin_list);
         FREE_LIST(&device_list);
-        freePeerList(&peer_list);
         return 0;
     }
     return 1;
@@ -130,7 +109,7 @@ void serverRun(int *state, int init_state) {
         }
     } else if (
             ACP_CMD_IS(ACP_CMD_SET_INT) ||
-            ACP_CMD_IS(ACP_CMD_SET_PWM_DUTY_CYCLE) ||
+            ACP_CMD_IS(ACP_CMD_SET_FLOAT) ||
             ACP_CMD_IS(ACP_CMD_SET_PWM_PERIOD) ||
             ACP_CMD_IS(ACP_CMD_GWU74_SET_RSL)
             ) {
@@ -207,7 +186,7 @@ void serverRun(int *state, int init_state) {
             }
         }
         return;
-    } else if (ACP_CMD_IS(ACP_CMD_SET_PWM_DUTY_CYCLE)) {
+    } else if (ACP_CMD_IS(ACP_CMD_SET_FLOAT)) {
         for (int i = 0; i < i2l.length; i++) {
             Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);
             if (p != NULL) {
@@ -336,17 +315,9 @@ int initDevice(DeviceList *dl, PinList *pl, char *device) {
 }
 
 void freeData() {
-    if (use_lock) {
-        Peer *peer_lock = NULL;
-        peer_lock = getPeerById(peer_lock_id, &peer_list);
-        if (peer_lock != NULL) {
-            acp_lck_lock(peer_lock);
-        }
-    }
     THREAD_STOP
     FREE_LIST(&pin_list);
     FREE_LIST(&device_list);
-    freePeerList(&peer_list);
 }
 
 void freeApp() {

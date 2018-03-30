@@ -129,7 +129,7 @@ void printHelp(ACPResponse *response) {
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tset output pin state; pin net_id expected\n", ACP_CMD_SET_INT);
     SEND_STR(q)
-    snprintf(q, sizeof q, "%s\tset duty cycle; dutyCycle expected; pin net_id expected\n", ACP_CMD_SET_PWM_DUTY_CYCLE);
+    snprintf(q, sizeof q, "%s\tset duty cycle; dutyCycle expected; pin net_id expected\n", ACP_CMD_SET_FLOAT);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tset PWM period (usec); PWMPeriod expected; pin net_id expected\n", ACP_CMD_SET_PWM_PERIOD);
     SEND_STR(q)
