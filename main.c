@@ -8,8 +8,9 @@ struct timespec cycle_duration = {0, 0};
 
 Peer peer_client = {.fd = &sock_fd, .addr_size = sizeof peer_client.addr};
 
-char device_name[NAME_SIZE];
-char db_data_path[LINE_SIZE];
+TSVresult config_tsv = TSVRESULT_INITIALIZER;
+char *device_name;
+char *db_data_path;
 
 DEF_THREAD
 
@@ -33,43 +34,33 @@ void (*readDeviceList)(DeviceList *, PinList *);
 #include "device/mcp23017.c"
 #include "print.c"
 
-int readSettings() {
-    FILE* stream = fopen(CONFIG_FILE, "r");
-    if (stream == NULL) {
-#ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): ", __func__);
-        perror("fopen()");
-#endif
+int readSettings(TSVresult* r, const char *data_path, int *port, struct timespec *cd, char **device_name, char **db_data_path) {
+    if (!TSVinit(r, data_path)) {
         return 0;
     }
-    skipLine(stream);
-    int n;
-    n = fscanf(stream, "%d\t%ld\t%ld\t%32s\t%255s\n",
-            &sock_port,
-            &cycle_duration.tv_sec,
-            &cycle_duration.tv_nsec,
-            device_name,
-            db_data_path
-            );
-    if (n != 5) {
-        fclose(stream);
-#ifdef MODE_DEBUG
-        fprintf(stderr, "%s(): bad row format\n", F);
-#endif
+    int _port = TSVgetis(r, 0, "port");
+    int _cd_sec = TSVgetis(r, 0, "cd_sec");
+    int _cd_nsec = TSVgetis(r, 0, "cd_nsec");
+    char *_device_name = TSVgetvalues(r, 0, "device_name");
+    char *_db_data_path = TSVgetvalues(r, 0, "db_data_path");
+    if (TSVnullreturned(r)) {
         return 0;
     }
-    fclose(stream);
-#ifdef MODE_DEBUG
-    printf("%s(): \n\tsock_port: %d \n\tcycle_duration: %ld sec %ld nsec, \n\tdevice_name: %s, \n\tdb_data_path: %s\n",
-            F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec, device_name, db_data_path);
-#endif
+    *port = _port;
+    cd->tv_sec = _cd_sec;
+    cd->tv_nsec = _cd_nsec;
+    *db_data_path = _db_data_path;
+    *device_name = _device_name;
     return 1;
 }
 
 void initApp() {
-    if (!readSettings()) {
+    if (!readSettings(&config_tsv, CONFIG_FILE, &sock_port, &cycle_duration, &device_name, &db_data_path)) {
         exit_nicely_e("initApp: failed to read settings\n");
     }
+    #ifdef MODE_DEBUG
+    printf("%s(): \n\tsock_port: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tdevice_name: %s, \n\tdb_data_path: %s\n", F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec,device_name, db_data_path);
+#endif
     if (!initServer(&sock_fd, sock_port)) {
         exit_nicely_e("initApp: failed to initialize udp server\n");
     }

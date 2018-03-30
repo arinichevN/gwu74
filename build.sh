@@ -56,6 +56,7 @@ function build_lib {
 	gcc $1 $CPU -c timef.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	gcc $1 $CPU -c udp.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	gcc $1 $CPU -c util.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $CPU -c tsv.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	gcc $1 $CPU $PINOUT -c gpio.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	gcc $1 $CPU -c pm.c -D_REENTRANT $DEBUG_PARAM  -lpthread && \
 	gcc $1 $CPU -c pwm.c -D_REENTRANT $DEBUG_PARAM -lpthread &&  \
@@ -67,7 +68,7 @@ function build_lib {
 	cd ../ && \
 	echo "library: making archive..." && \
 	rm -f libpac.a
-	ar -crv libpac.a app.o crc.o dbl.o timef.o udp.o util.o configl.o acp/main.o acp/lck.o gpio.o pm.o pwm.o i2c.o && echo "library: done" && echo "hardware: $CPU $PINOUT"
+	ar -crv libpac.a app.o crc.o dbl.o timef.o udp.o util.o tsv.o configl.o acp/main.o acp/lck.o gpio.o pm.o pwm.o i2c.o && echo "library: done" && echo "hardware: $CPU $PINOUT"
 	rm -f *.o acp/*.o
 }
 
