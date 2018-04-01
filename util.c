@@ -179,6 +179,12 @@ int bufCatPinIn(const Pin *item, ACPResponse *response) {
     return 0;
 }
 
+int bufCatError(const Pin *item, ACPResponse *response) {
+    char q[LINE_SIZE];
+    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%u" ACP_DELIMITER_ROW_STR, item->net_id, item->error_code);
+    return acp_responseStrCat(response, q);
+}
+
 int bufCatPinOut(const Pin *item, ACPResponse *response) {
     if (item->mode == DIO_MODE_OUT) {
         struct timespec tm = getCurrentTime();
@@ -257,6 +263,7 @@ void setPinRslPWM(Pin *item, int value, const char *db_data_path) {
 int needSecure(DOSecure *item) {
     if (item->enable && !item->done) {
         if (ton_ts(item->timeout, &item->tmr)) {
+            BIT_ENABLE(*item->error_code, PROG_ERROR_NO_SIGNAL_FROM_CLIENT);
             return 1;
         }
     }
@@ -264,6 +271,7 @@ int needSecure(DOSecure *item) {
 }
 
 void resetSecure(DOSecure *item) {
+    BIT_DISABLE(*item->error_code, PROG_ERROR_NO_SIGNAL_FROM_CLIENT);
     item->done = 0;
     item->tmr.ready = 0;
 }

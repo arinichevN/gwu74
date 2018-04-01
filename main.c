@@ -91,6 +91,7 @@ void serverRun(int *state, int init_state) {
     DEF_SERVER_I2LIST
     if (
             ACP_CMD_IS(ACP_CMD_GET_FTS) ||
+            ACP_CMD_IS(ACP_CMD_PROG_GET_ERROR) ||
             ACP_CMD_IS(ACP_CMD_GWU74_GET_OUT) ||
             ACP_CMD_IS(ACP_CMD_PROG_GET_DATA_INIT)
             ) {
@@ -151,6 +152,20 @@ void serverRun(int *state, int init_state) {
                 }
             }
         }
+    } else if (ACP_CMD_IS(ACP_CMD_PROG_GET_ERROR)) {
+        for (int i = 0; i < i1l.length; i++) {
+            Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
+            if (p != NULL) {
+                int done = 0;
+                if (lockPD(&pin_list.item[i])) {
+                    done = bufCatError(p, &response);
+                    unlockPD(&pin_list.item[i]);
+                }
+                if (!done) {
+                    return;
+                }
+            }
+        }
     } else if (ACP_CMD_IS(ACP_CMD_GWU74_GET_OUT)) {
         for (int i = 0; i < i1l.length; i++) {
             Pin *p = getPinBy_net_id(i1l.item[i], &pin_list);
@@ -165,6 +180,7 @@ void serverRun(int *state, int init_state) {
                 }
             }
         }
+
     } else if (ACP_CMD_IS(ACP_CMD_SET_INT)) {
         for (int i = 0; i < i2l.length; i++) {
             Pin *p = getPinBy_net_id(i2l.item[i].p0, &pin_list);

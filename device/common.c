@@ -78,6 +78,7 @@ int getPin_callback(void *data, int argc, char **argv, char **azColName) {
             d->list->item[d->list->length].secure_out.timeout.tv_sec = atoi(DB_COLUMN_VALUE);
             d->list->item[d->list->length].secure_out.timeout.tv_nsec = 0;
             d->list->item[d->list->length].secure_out.tmr.ready = 0;
+            d->list->item[d->list->length].secure_out.error_code = &d->list->item[d->list->length].error_code;
             c++;
         } else if (DB_COLUMN_IS("secure_duty_cycle")) {
             d->list->item[d->list->length].secure_out.duty_cycle = atoi(DB_COLUMN_VALUE);
@@ -92,6 +93,7 @@ int getPin_callback(void *data, int argc, char **argv, char **azColName) {
             c++;
         }
     }
+    d->list->item[d->list->length].error_code=0x0u;
     d->list->length++;
 #define N 11
     if (c != N) {

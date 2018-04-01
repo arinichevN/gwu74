@@ -34,6 +34,7 @@ void printData(ACPResponse *response) {
                 );
         SEND_STR(q)
     }
+
     SEND_STR("+-----------+----------------+-----------+-----------+\n")
 
     FORLISTP(dl, i) {
@@ -102,7 +103,6 @@ void printData(ACPResponse *response) {
 
 }
 
-
 void printHelp(ACPResponse *response) {
     char q[LINE_SIZE];
     SEND_STR("COMMAND LIST\n")
@@ -121,6 +121,8 @@ void printHelp(ACPResponse *response) {
     snprintf(q, sizeof q, "%s\tget this help; response will be packed into multiple packets\n", ACP_CMD_APP_HELP);
     SEND_STR(q)
 
+    snprintf(q, sizeof q, "%s\tget get channel error code; pin net_id expected;\n", ACP_CMD_PROG_GET_ERROR);
+    SEND_STR(q)
     snprintf(q, sizeof q, "%s\tget input pin state; pin net_id expected; response: net_id\\tstate\\tttimeSec\\ttimeNsec\\tvalid\n", ACP_CMD_GET_FTS);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tget pin data; pin net_id expected; response: id\\tmode\\tpud\\tPWMPeriodSec\\tPWMPeriodNsec\n", ACP_CMD_PROG_GET_DATA_INIT);

@@ -60,6 +60,7 @@ typedef struct {
    int duty_cycle;
    Ton_ts tmr;
    int done;
+   uint32_t *error_code;
 }DOSecure;
 
 typedef struct {
@@ -76,6 +77,7 @@ typedef struct {
     int out_pwm; //1-pwm mode
     int out;
     struct timespec tm;
+    uint32_t error_code;
     Mutex mutex;
 } Pin;
 
