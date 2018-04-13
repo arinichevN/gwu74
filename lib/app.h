@@ -45,9 +45,11 @@
 
 #define PROG_ERROR_NO_SIGNAL_FROM_CLIENT 0x1
 #define PROG_ERROR_NO_RESPONSE_FROM_SENSOR 0x2
+#define PROG_ERROR_HARDWARE 0x4
 
 #define BIT_ENABLE(buf,v) (buf)|=(v)
 #define BIT_DISABLE(buf,v) (buf)&=~(v)
+#define BIT_IS_ENABLED(buf,v) (buf)&(v)
 
 #define SERVER_HEADER \
     ACPResponse response;ACPRequest request;\
@@ -92,10 +94,10 @@
 #define DEF_SERVER_S2LIST S2 s2_arr[request.data_rows_count];S2List s2l;s2l.item=s2_arr;s2l.max_length=request.data_rows_count;s2l.length=0;
 #define DEF_SERVER_I1S1LIST I1S1 i1s1_arr[request.data_rows_count];I1S1List i1s1l;i1s1l.item=i1s1_arr;i1s1l.max_length=request.data_rows_count;i1s1l.length=0;
 
-#define SERVER_PARSE_I1LIST acp_requestDataToI1List(&request, &i1l);if (i1l.length <= 0) {return;}
-#define SERVER_PARSE_I1F1LIST acp_requestDataToI1F1List(&request, &i1f1l);if (i1f1l.length <= 0) {return;}
-#define SERVER_PARSE_I2LIST acp_requestDataToI2List(&request, &i2l);if (i2l.length <= 0) {return;}
-#define SERVER_PARSE_I1S1LIST acp_requestDataToI1S1List(&request, &i1s1l);if (i1s1l.length <= 0) {return;}
+#define SERVER_PARSE_I1LIST acp_requestDataToI1List(&request, &i1l);if (i1l.length <= 0)return;
+#define SERVER_PARSE_I1F1LIST acp_requestDataToI1F1List(&request, &i1f1l);if (i1f1l.length <= 0)return;
+#define SERVER_PARSE_I2LIST acp_requestDataToI2List(&request, &i2l);if (i2l.length <= 0)return;
+#define SERVER_PARSE_I1S1LIST acp_requestDataToI1S1List(&request, &i1s1l);if (i1s1l.length <= 0)return;
 
 #define SEND_STR(V) acp_responseSendStr(V, ACP_MIDDLE_PACK, response, &peer_client);
 #define SEND_STR_L(V) acp_responseSendStr(V, ACP_LAST_PACK, response, &peer_client);
@@ -104,16 +106,14 @@
 #define SEND_STR_L_P(V) acp_responseSendStr(V, ACP_LAST_PACK, &response, &peer_client);
 
 #define LIST_GET_BY_ID \
-     int i;\
-    for (i = 0; i < list->length; i++) {\
+    for (int i = 0; i < list->length; i++) {\
         if (list->item[i].id == id) {\
             return &(list->item[i]);\
         }\
     }\
     return NULL;
 #define LIST_GET_BY_IDSTR \
-     int i;\
-    for (i = 0; i < list->length; i++) {\
+    for (int i = 0; i < list->length; i++) {\
         if (strcmp(list->item[i].id, id)==0) {\
             return &(list->item[i]);\
         }\
@@ -131,8 +131,7 @@
     return NULL;
 
 #define LIST_GET_BY(V) \
-     int i;\
-    for (i = 0; i < list->length; i++) {\
+    for (int i = 0; i < list->length; i++) {\
         if (list->item[i].V == id) {\
             return &(list->item[i]);\
         }\

@@ -1048,6 +1048,46 @@ int acp_getProgEnabled(Peer *peer, int remote_id) {
     return tl.item[0].p1;
 }
 
+int acp_getError(uint32_t *output, Peer *peer, int remote_id) {
+
+    struct timespec now = getCurrentTime();
+    peer->active = 0;
+    peer->time1 = now;
+
+    int di[1];
+    di[0] = remote_id;
+    I1List data = {di, 1, 1};
+    ACPRequest request;
+    if (!acp_requestSendI1List(ACP_CMD_PROG_GET_ERROR, &data, &request, peer)) {
+        printde("send failed where remote_id=%d\n", remote_id);
+        return 0;
+    }
+
+    //waiting for response...
+    I1U321 td[1];
+    I1U321List tl = {td, 0, 1};
+
+    memset(&td, 0, sizeof tl);
+    tl.length = 0;
+    if (!acp_responseReadI1U321List(&tl, &request, peer)) {
+        printde("read failed where remote_id=%d\n", remote_id);
+        return 0;
+    }
+    peer->active = 1;
+    if (tl.length != 1) {
+        printde("response: number of items = %d but 1 expected\n", tl.length != 1);
+        return 0;
+    }
+    if (tl.item[0].p0 != remote_id) {
+        printde("response: peer returned id=%d but requested one was %d\n", tl.item[0].p0, remote_id);
+        return 0;
+    }
+    peer->active = 1;
+    *output = tl.item[0].p1;
+
+    return 1;
+}
+
 int acp_peerItemSendCmd(Peer *peer, int remote_id, char *cmd) {
     peer->active = 0;
     peer->time1 = getCurrentTime();

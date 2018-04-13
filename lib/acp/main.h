@@ -199,6 +199,14 @@ typedef struct {
 DEC_LIST(EM)
 DEC_FUN_LIST_INIT(EM)
 
+typedef struct {
+    int id;
+    int remote_id;
+    Peer peer;
+} Channel;
+DEC_LIST(Channel)
+DEC_FUN_LIST_INIT(Channel)
+
 #define FUN_ACP_REQUEST_DATA_TO(T) void acp_requestDataTo ## T(ACPRequest *request, T *list){\
 acp_dataTo ## T(request->data, list);\
 }
@@ -295,6 +303,8 @@ extern int acp_readSensorInt(SensorInt *s);
 extern int acp_readSensorFTS(SensorFTS *s);
 
 extern int acp_getFTS(FTS *output, Peer *peer, int remote_id);
+
+extern int acp_getError(uint32_t *output, Peer *peer, int remote_id);
 
 extern int acp_getProgEnabled(Peer *peer, int remote_id);
 
