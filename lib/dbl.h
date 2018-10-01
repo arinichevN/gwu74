@@ -12,6 +12,8 @@
 #define DB_COLUMN_VALUE argv[i]
 #define DB_COLUMN_IS(V) strcmp(V, DB_COLUMN_NAME) == 0
 #define DB_FOREACH_COLUMN for (int i = 0; i < argc; i++) 
+#define DB_CVI atoi(DB_COLUMN_VALUE)
+#define DB_CVF atof(DB_COLUMN_VALUE)
 
 extern int db_open(const char *path, sqlite3 **db);
 

@@ -112,8 +112,8 @@ int mcp23008_checkData(DeviceList *dl, PinList *pl) {
             fprintf(stderr, "%s(): bad pwm_period where net_id = %d\n",F, pl->item[i].net_id);
             return 0;
         }
-        if (pl->item[i].pwm.rsl < 0) {
-            fprintf(stderr, "%s(): bad rsl where net_id = %d\n", F,pl->item[i].net_id);
+        if (pl->item[i].pwm.resolution < 0) {
+            fprintf(stderr, "%s(): bad resolution where net_id = %d\n", F,pl->item[i].net_id);
             return 0;
         }
     }

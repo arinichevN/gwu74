@@ -1,7 +1,5 @@
 #include "lcorrection.h"
 
-FUN_LIST_GET_BY_ID(LCorrection)
-
 
 int initLCorrection(LCorrectionList *list, const char *config_path) {
     TSVresult tsv = TSVRESULT_INITIALIZER;

@@ -2,7 +2,7 @@
 #ifndef LIBPAS_CONFIG_H
 #define LIBPAS_CONFIG_H
 
-#include "db.h"
+#include "dbl.h"
 #include "acp/main.h"
 #include "udp.h"
 #include "timef.h"

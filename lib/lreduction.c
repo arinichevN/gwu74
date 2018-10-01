@@ -1,7 +1,5 @@
 #include "lreduction.h"
 
-FUN_LIST_GET_BY_ID(LReduction)
-
 int initLReduction(LReductionList *list, const char *config_path) {
     TSVresult tsv = TSVRESULT_INITIALIZER;
     TSVresult* r = &tsv;

@@ -26,7 +26,8 @@
 
 #define WAIT_RESP_TIMEOUT 3
 #define LOCK_COM_INTERVAL 1000000U
-
+#define GET_PIN(ITEM, LIST, NEEDLE) LIST_GETBYFIELD(net_id, ITEM, LIST, NEEDLE)
+#define GET_DEVICE(ITEM, LIST, NEEDLE) LIST_GETBYFIELD(id, ITEM, LIST, NEEDLE)
 extern int initDevice(DeviceList *dl, PinList *pl, char *device);
 
 extern void updateOutSafe(PinList *list);

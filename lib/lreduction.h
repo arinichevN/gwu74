@@ -15,7 +15,6 @@ typedef struct {
 } LReduction;
 
 DEC_LIST(LReduction)
-DEC_FUN_LIST_GET_BY_ID(LReduction)
 
 extern int initLReduction(LReductionList *list, const char *config_path);
 

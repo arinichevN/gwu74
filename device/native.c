@@ -83,8 +83,8 @@ int native_checkData(PinList *list) {
             fprintf(stderr, "%s(): bad pwm_period where net_id = %d\n", F, list->item[i].net_id);
             return 0;
         }
-        if (list->item[i].pwm.rsl < 0) {
-            fprintf(stderr, "%s(): bad rsl where net_id = %d\n", F, list->item[i].net_id);
+        if (list->item[i].pwm.resolution < 0) {
+            fprintf(stderr, "%s(): bad resolution where net_id = %d\n", F, list->item[i].net_id);
             return 0;
         }
     }

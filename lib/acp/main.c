@@ -1,44 +1,8 @@
 
 #include "main.h"
 
-FUN_LIST_GET_BY_IDSTR(Peer)
-
-FUN_LIST_GET_BY_ID(SensorFTS)
-
-FUN_LIST_GET_BY_ID(EM)
-
-FUN_LIST_INIT(I1)
-
-FUN_LIST_INIT(I2)
-
-FUN_LIST_INIT(I3)
-
-FUN_LIST_INIT(F1)
-
-FUN_LIST_INIT(I1F1)
-
-FUN_LIST_INIT(I1U321)
-
-FUN_LIST_INIT(D1)
-
-FUN_LIST_INIT(S1)
-
-FUN_LIST_INIT(I1S1)
-
-FUN_LIST_INIT(S2)
-
-FUN_LIST_INIT(FTS)
-
-FUN_LIST_INIT(Peer)
-
-FUN_LIST_INIT(SensorInt)
-
-FUN_LIST_INIT(SensorFTS)
-
-FUN_LIST_INIT(EM)
-
 void freePeerList(PeerList *list) {
-    for (int i = 0; i < list->length; i++) {
+    for (size_t i = 0; i < list->length; i++) {
         free(list->item[i].id);
         free(list->item[i].addr_str);
     }
@@ -46,8 +10,7 @@ void freePeerList(PeerList *list) {
 }
 
 static void acp_dumpBuf(const char *buf, size_t buf_size) {
-    int i;
-    for (i = 0; i < buf_size; i++) {
+    for (int i = 0; i < buf_size; i++) {
         printf("%hhu.", buf[i]);
         if (buf[i] == '\0') {
             putchar('\n');
@@ -58,9 +21,9 @@ static void acp_dumpBuf(const char *buf, size_t buf_size) {
 }
 
 static size_t acp_packlen(const char *buf, size_t buf_size) {
-    int i, state = 0;
+    int state = 0;
     size_t n = 0;
-    for (i = 0; i < buf_size; i++) {
+    for (int i = 0; i < buf_size; i++) {
         switch (state) {
             case 0:
                 if (buf[i] == ACP_DELIMITER_BLOCK) {
@@ -96,8 +59,8 @@ static size_t acp_packlen(const char *buf, size_t buf_size) {
 static int acp_crcCheck(const char * buf, size_t buf_size) {
     uint8_t crc, crc_fact = 0;
     char state = 0;
-    int i, found = 0, block_count = 0;
-    for (i = 0; i < buf_size; i++) {
+    int found = 0, block_count = 0;
+    for (int i = 0; i < buf_size; i++) {
         switch (state) {
             case 0:
                 if (buf[i] == ACP_DELIMITER_BLOCK) {

@@ -46,7 +46,7 @@ int config_checkEMList(const EMList *list) {
 static int getPeerList_callback(void *data, int argc, char **argv, char **azColName) {
     PeerData *peer_data = data;
     int c = 0;
-    for (int i = 0; i < argc; i++) {
+    DB_FOREACH_COLUMN {
         if (DB_COLUMN_IS("id")) {
             strcpyma(&PDLi.id, DB_COLUMN_VALUE);
             if(PDLi.id==NULL){
@@ -55,7 +55,7 @@ static int getPeerList_callback(void *data, int argc, char **argv, char **azColN
             }
             c++;
         } else if (DB_COLUMN_IS("port")) {
-            PDLi.port = atoi(argv[i]);
+            PDLi.port = DB_CVI;
             c++;
         } else if (DB_COLUMN_IS("ip_addr")) {
             strcpyma(&PDLi.addr_str, DB_COLUMN_VALUE);
@@ -93,9 +93,9 @@ static int getPeerList_callback(void *data, int argc, char **argv, char **azColN
 static int getPhoneNumber_callback(void *data, int argc, char **argv, char **azColName) {
     S1List *item = data;
     int c = 0;
-    for (int i = 0; i < argc; i++) {
+    DB_FOREACH_COLUMN {
         if (DB_COLUMN_IS("value")) {
-            memcpy(&item->item[item->length * LINE_SIZE], argv[i], LINE_SIZE);
+            memcpy(&item->item[item->length * LINE_SIZE], DB_COLUMN_VALUE, LINE_SIZE);
             c++;
         } else {
             putsde("unknown column\n");
@@ -114,19 +114,20 @@ static int getPhoneNumber_callback(void *data, int argc, char **argv, char **azC
 static int getSensorFTS_callback(void *data, int argc, char **argv, char **azColName) {
     SensorFTSData *item = data;
     int c = 0;
-    for (int i = 0; i < argc; i++) {
+    DB_FOREACH_COLUMN {
         if (DB_COLUMN_IS("peer_id")) {
-            Peer *peer = getPeerById(argv[i], item->peer_list);
+            Peer *peer;
+            LIST_GETBYIDSTR(peer,item->peer_list,DB_COLUMN_VALUE)
             if (peer == NULL) {
                 return EXIT_FAILURE;
             }
             item->sensor->peer = *peer;
             c++;
         } else if (DB_COLUMN_IS("remote_id")) {
-            item->sensor->remote_id = atoi(argv[i]);
+            item->sensor->remote_id = DB_CVI;
             c++;
         } else if (DB_COLUMN_IS("sensor_id")) {
-            item->sensor->id = atoi(argv[i]);
+            item->sensor->id = DB_CVI;
             c++;
         } else {
             putsde("unknown column\n");
@@ -144,19 +145,20 @@ static int getSensorFTS_callback(void *data, int argc, char **argv, char **azCol
 static int getSensorFTSList_callback(void *data, int argc, char **argv, char **azColName) {
     SensorFTSListData *d = data;
     int c = 0;
-    for (int i = 0; i < argc; i++) {
+    DB_FOREACH_COLUMN {
         if (DB_COLUMN_IS("peer_id")) {
-            Peer *peer = getPeerById(argv[i], d->peer_list);
+            Peer *peer;
+            LIST_GETBYIDSTR(peer,d->peer_list,DB_COLUMN_VALUE)
             if (peer == NULL) {
                 return EXIT_FAILURE;
             }
             d->list->item[d->list->length].peer = *peer;
             c++;
         } else if (DB_COLUMN_IS("remote_id")) {
-            d->list->item[d->list->length].remote_id = atoi(argv[i]);
+            d->list->item[d->list->length].remote_id = DB_CVI;
             c++;
         } else if (DB_COLUMN_IS("sensor_id")) {
-            d->list->item[d->list->length].id = atoi(argv[i]);
+            d->list->item[d->list->length].id = DB_CVI;
             c++;
         } else {
             putsde("unknown column\n");
@@ -175,19 +177,20 @@ static int getSensorFTSList_callback(void *data, int argc, char **argv, char **a
 static int getEM_callback(void *data, int argc, char **argv, char **azColName) {
     EMData *item = data;
     int c = 0;
-    for (int i = 0; i < argc; i++) {
+    DB_FOREACH_COLUMN {
         if (DB_COLUMN_IS("peer_id")) {
-            Peer *peer = getPeerById(argv[i], item->peer_list);
+            Peer *peer;
+            LIST_GETBYIDSTR(peer,item->peer_list,DB_COLUMN_VALUE)
             if (peer == NULL) {
                 return EXIT_FAILURE;
             }
             item->em->peer = *peer;
             c++;
         } else if (DB_COLUMN_IS("remote_id")) {
-            item->em->remote_id = atoi(argv[i]);
+            item->em->remote_id = DB_CVI;
             c++;
         } else if (DB_COLUMN_IS("pwm_rsl")) {
-            item->em->pwm_rsl = atof(argv[i]);
+            item->em->pwm_rsl = DB_CVF;
             c++;
         } else {
             putsde("unknown column\n");
@@ -206,22 +209,23 @@ static int getEM_callback(void *data, int argc, char **argv, char **azColName) {
 static int getEMList_callback(void *data, int argc, char **argv, char **azColName) {
     EMListData *d = data;
     int c = 0;
-    for (int i = 0; i < argc; i++) {
+    DB_FOREACH_COLUMN {
         if (DB_COLUMN_IS("peer_id")) {
-            Peer *peer = getPeerById(argv[i], d->peer_list);
+            Peer *peer;
+            LIST_GETBYIDSTR(peer,d->peer_list,DB_COLUMN_VALUE)
             if (peer == NULL) {
                 return EXIT_FAILURE;
             }
             d->list->item[d->list->length].peer = *peer;
             c++;
         } else if (DB_COLUMN_IS("remote_id")) {
-            d->list->item[d->list->length].remote_id = atoi(argv[i]);
+            d->list->item[d->list->length].remote_id = DB_CVI;
             c++;
         } else if (DB_COLUMN_IS("em_id")) {
-            d->list->item[d->list->length].id = atoi(argv[i]);
+            d->list->item[d->list->length].id = DB_CVI;
             c++;
         } else if (DB_COLUMN_IS("pwm_rsl")) {
-            d->list->item[d->list->length].pwm_rsl = atof(argv[i]);
+            d->list->item[d->list->length].pwm_rsl = DB_CVF;
             c++;
         } else {
             putsde("unknown column\n");
@@ -251,7 +255,8 @@ int config_getPeerList(PeerList *list, int *fd, const char *db_path) {
         sqlite3_close(db);
         return 1;
     }
-    if (!initPeerList(list, n)) {
+    ALLOC_LIST(list,n)
+    if (list->max_length!=n) {
         putsde("failed to allocate memory\n");
         sqlite3_close(db);
         return 0;
@@ -286,7 +291,8 @@ int config_getSensorFTSList(SensorFTSList *list, PeerList *peer_list, const char
         sqlite3_close(db);
         return 1;
     }
-    if (!initSensorFTSList(list, n)) {
+    ALLOC_LIST(list,n)
+    if (list->max_length!=n) {
         putsde("failed to allocate memory\n");
         sqlite3_close(db);
         return 0;
@@ -321,7 +327,8 @@ int config_getEMList(EMList *list, PeerList *peer_list, const char *db_path) {
         sqlite3_close(db);
         return 1;
     }
-    if (!initEMList(list, n)) {
+    ALLOC_LIST(list,n)
+    if (list->max_length!=n) {
         putsde("failed to allocate memory\n");
         sqlite3_close(db);
         return 0;
