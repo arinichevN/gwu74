@@ -66,45 +66,44 @@ void native_readDeviceList(DeviceList *list, PinList *pl) {
 }
 
 int native_checkData(PinList *list) {
-    for (int i = 0; i < list->length; i++) {
+    int success=1;
+    FORLi {
         if (!checkPin(list->item[i].id_dev)) {
             fprintf(stderr, "%s(): bad id_within_device where net_id = %d\n", F, list->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (list->item[i].mode != DIO_MODE_IN && list->item[i].mode != DIO_MODE_OUT) {
             fprintf(stderr, "%s(): bad mode where net_id = %d\n", F, list->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (list->item[i].pud != DIO_PUD_OFF && list->item[i].pud != DIO_PUD_UP && list->item[i].pud != DIO_PUD_DOWN) {
             fprintf(stderr, "%s(): bad PUD where net_id = %d\n", F, list->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (list->item[i].pwm.period.tv_sec < 0 || list->item[i].pwm.period.tv_nsec < 0) {
             fprintf(stderr, "%s(): bad pwm_period where net_id = %d\n", F, list->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (list->item[i].pwm.resolution < 0) {
             fprintf(stderr, "%s(): bad resolution where net_id = %d\n", F, list->item[i].net_id);
-            return 0;
+            success= 0;
         }
     }
-    for (int i = 0; i < list->length; i++) {
-        for (int j = i + 1; j < list->length; j++) {
+    FFORLISTPL ( list,i, j ) {
             if (list->item[i].net_id == list->item[j].net_id) {
                 fprintf(stderr, "%s(): net_id is not unique where net_id = %d\n", F, list->item[i].net_id);
-                return 0;
+                success= 0;
             }
         }
     }
-    for (int i = 0; i < list->length; i++) {
-        for (int j = i + 1; j < list->length; j++) {
+    FFORLISTPL ( list,i, j ) {
             if (list->item[i].id_dev == list->item[j].id_dev) {
                 fprintf(stderr, "%s(): id_within_device is not unique where net_id = %d\n", F, list->item[i].net_id);
-                return 0;
+                success= 0;
             }
         }
     }
-    return 1;
+    return success;
 }
 
 void native_setPtf() {
@@ -123,7 +122,7 @@ int native_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
 #endif
         return 0;
     }
-    for (int i = 0; i < pl->length; i++) {
+    FORLISTP(pl, i) {
         pl->item[i].device = NULL;
     }
     if (!native_checkData(pl)) {

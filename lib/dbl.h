@@ -19,6 +19,8 @@ extern int db_open(const char *path, sqlite3 **db);
 
 extern int db_openR(const char *path, sqlite3 **db);
 
+extern void db_close(sqlite3 *db);
+
 extern int db_exec(sqlite3 *db, char *q, int (*callback)(void*, int, char**, char**), void * data);
 
 extern int db_getInt(int *item, sqlite3 *db, char *q);

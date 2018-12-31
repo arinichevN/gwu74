@@ -43,7 +43,7 @@ int initLCorrection(LCorrectionList *list, const char *config_path) {
     return 1;
 }
 
-void lcorrect(float *out, LCorrection *x) {
+void lcorrect(double *out, LCorrection *x) {
     if (x == NULL) {
         return;
     }

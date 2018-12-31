@@ -42,10 +42,9 @@ void unlockPD ( Pin *item ) {
 }
 
 int lockPinAll ( PinList *list ) {
-    size_t i;
     int done = 1;
-    for ( i = 0; i < list->length; i++ ) {
-        done = done && lockPin ( &list->item[i] );
+    FORLi {
+        done = done && lockPin ( &LIi );
         if ( !done ) {
             break;
         }
@@ -54,10 +53,9 @@ int lockPinAll ( PinList *list ) {
 }
 
 int lockDeviceAll ( DeviceList *list ) {
-    size_t i;
     int done = 1;
-    for ( i = 0; i < list->length; i++ ) {
-        done = done && lockDevice ( &list->item[i] );
+    FORLi {
+        done = done && lockDevice ( &LIi );
         if ( !done ) {
             break;
         }
@@ -66,16 +64,14 @@ int lockDeviceAll ( DeviceList *list ) {
 }
 
 void unlockPinAll ( PinList *list ) {
-    size_t i;
-    for ( i = 0; i < list->length; i++ ) {
-        unlockPin ( &list->item[i] );
+    FORLi {
+        unlockPin ( &LIi );
     }
 }
 
 void unlockDeviceAll ( DeviceList *list ) {
-    size_t i;
-    for ( i = 0; i < list->length; i++ ) {
-        unlockDevice ( &list->item[i] );
+    FORLi {
+        unlockDevice ( &LIi );
     }
 }
 

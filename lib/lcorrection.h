@@ -8,13 +8,13 @@
 
 typedef struct {
     int id;
-    float factor;
-    float delta;
+    double factor;
+    double delta;
 } LCorrection;
 
 DEC_LIST(LCorrection)
 
 extern int initLCorrection(LCorrectionList *list, const char *config_path);
-extern void lcorrect(float *out, LCorrection *x);
+extern void lcorrect(double *out, LCorrection *x);
 #endif
 

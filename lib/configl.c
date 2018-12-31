@@ -252,24 +252,24 @@ int config_getPeerList(PeerList *list, int *fd, const char *db_path) {
     char *qn = "select count(*) FROM peer";
     db_getInt(&n, db, qn);
     if (n <= 0) {
-        sqlite3_close(db);
+        db_close(db);
         return 1;
     }
     ALLOC_LIST(list,n)
     if (list->max_length!=n) {
         putsde("failed to allocate memory\n");
-        sqlite3_close(db);
+        db_close(db);
         return 0;
     }
     PeerData data = {.list = list, .fd = fd};
     char *q = "select id, port, ip_addr FROM peer";
     if (!db_exec(db, q, getPeerList_callback, &data)) {
         putsde("failed\n");
-        sqlite3_close(db);
+        db_close(db);
         FREE_LIST(list);
         return 0;
     }
-    sqlite3_close(db);
+    db_close(db);
     if (!config_checkPeerList(list)) {
         FREE_LIST(list);
         return 0;
@@ -288,24 +288,24 @@ int config_getSensorFTSList(SensorFTSList *list, PeerList *peer_list, const char
     char *qn = "select count(*) FROM sensor_mapping";
     db_getInt(&n, db, qn);
     if (n <= 0) {
-        sqlite3_close(db);
+        db_close(db);
         return 1;
     }
     ALLOC_LIST(list,n)
     if (list->max_length!=n) {
         putsde("failed to allocate memory\n");
-        sqlite3_close(db);
+        db_close(db);
         return 0;
     }
     SensorFTSListData data = {.list = list, .peer_list = peer_list};
     char *q = "select sensor_id, peer_id, remote_id FROM sensor_mapping";
     if (!db_exec(db, q, getSensorFTSList_callback, &data)) {
         putsde("failed\n");
-        sqlite3_close(db);
+        db_close(db);
         FREE_LIST(list);
         return 0;
     }
-    sqlite3_close(db);
+    db_close(db);
     if (!config_checkSensorFTSList(list)) {
         FREE_LIST(list);
         return 0;
@@ -324,24 +324,24 @@ int config_getEMList(EMList *list, PeerList *peer_list, const char *db_path) {
     char *qn = "select count(*) FROM em_mapping";
     db_getInt(&n, db, qn);
     if (n <= 0) {
-        sqlite3_close(db);
+        db_close(db);
         return 1;
     }
     ALLOC_LIST(list,n)
     if (list->max_length!=n) {
         putsde("failed to allocate memory\n");
-        sqlite3_close(db);
+        db_close(db);
         return 0;
     }
     EMListData data = {.list = list, .peer_list = peer_list};
     char *q = "select em_id, peer_id, remote_id, pwm_rsl FROM em_mapping";
     if (!db_exec(db, q, getEMList_callback, &data)) {
         putsde("failed\n");
-        sqlite3_close(db);
+        db_close(db);
         FREE_LIST(list);
         return 0;
     }
-    sqlite3_close(db);
+    db_close(db);
     if (!config_checkEMList(list)) {
         FREE_LIST(list);
         return 0;
@@ -397,18 +397,49 @@ int config_getPeer(Peer *item, const char * peer_id, int *fd, sqlite3 *dbl, cons
     if (!db_exec(db, q, getPeerList_callback, &data)) {
         putsde("failed\n");
         if (db_path != NULL) {
-            sqlite3_close(db);
+            db_close(db);
         }
         return 0;
     }
     if (db_path != NULL) {
-        sqlite3_close(db);
+        db_close(db);
     }
     if (data.list->length != 1) {
         printde("can't get peer: %s\n", peer_id);
         return 0;
     }
 
+    return 1;
+}
+
+int config_getPort(int *port, const char *peer_id, sqlite3 *dbl, const char *db_path) {
+    if (dbl != NULL && db_path != NULL) {
+        putsde("dbl xor db_path expected\n");
+        return 0;
+    }
+    sqlite3 *db;
+    if (db_path != NULL) {
+        if (!db_openR(db_path, &db)) {
+            putsde("failed\n");
+            return 0;
+        }
+    } else {
+        db = dbl;
+    }
+    char q[LINE_SIZE];
+    int _port=-1;
+    snprintf(q, sizeof q, "SELECT port FROM peer where id='%s'", peer_id);
+    if (!db_getInt(&_port, db, q)) {
+        putsde("failed\n");
+        if (db_path != NULL) {
+            db_close(db);
+        }
+        return 0;
+    }
+    if (db_path != NULL) {
+        db_close(db);
+    }
+    *port=_port;
     return 1;
 }
 
@@ -424,18 +455,18 @@ int config_getPhoneNumberListG(S1List *list, int group_id, const char *db_path) 
     snprintf(q, sizeof q, "select count(*) from phone_number where group_id=%d", group_id);
     if (!db_getInt(&n, db, q)) {
         putsde("failed\n");
-        sqlite3_close(db);
+        db_close(db);
         return 0;
     }
     if (n <= 0) {
-        sqlite3_close(db);
+        db_close(db);
         return 1;
     }
     size_t list_size = LINE_SIZE * n * sizeof *(list->item);
     list->item = malloc(list_size);
     if (list->item == NULL) {
         perrord("malloc()");
-        sqlite3_close(db);
+        db_close(db);
         return 0;
     }
     list->max_length = n;
@@ -443,17 +474,17 @@ int config_getPhoneNumberListG(S1List *list, int group_id, const char *db_path) 
     snprintf(q, sizeof q, "select value from phone_number where group_id=%d", group_id);
     if (!db_exec(db, q, getPhoneNumber_callback, list)) {
         putsde("failed\n");
-        sqlite3_close(db);
+        db_close(db);
         FREE_LIST(list);
         return 0;
     }
     if (list->length != n) {
         printde("bad length: %d < %d\n", list->length, n);
-        sqlite3_close(db);
+        db_close(db);
         FREE_LIST(list);
         return 0;
     }
-    sqlite3_close(db);
+    db_close(db);
     return 1;
 }
 
@@ -467,34 +498,34 @@ int config_getPhoneNumberListO(S1List *list, const char *db_path) {
     int n = 0;
     if (!db_getInt(&n, db, "select count(*) from phone_number")) {
         putsde("failed\n");
-        sqlite3_close(db);
+        db_close(db);
         return 0;
     }
     if (n <= 0) {
-        sqlite3_close(db);
+        db_close(db);
         return 1;
     }
     size_t list_size = LINE_SIZE * n * sizeof *(list->item);
     list->item = malloc(list_size);
     if (list->item == NULL) {
         perrord("malloc()");
-        sqlite3_close(db);
+        db_close(db);
         return 0;
     }
     list->max_length = n;
     memset(list->item, 0, list_size);
     if (!db_exec(db, "select value from phone_number order by group_id", getPhoneNumber_callback, list)) {
         putsde("failed\n");
-        sqlite3_close(db);
+        db_close(db);
         FREE_LIST(list);
         return 0;
     }
     if (list->length != n) {
         printde("bad length: %d < %d\n", list->length, n);
-        sqlite3_close(db);
+        db_close(db);
         FREE_LIST(list);
         return 0;
     }
-    sqlite3_close(db);
+    db_close(db);
     return 1;
 }

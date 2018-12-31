@@ -1,9 +1,8 @@
 
 void mcp23008_setMode(Pin *pin, int mode) {
-    int mask, old, reg;
-    reg = MCP23x08_IODIR;
-    mask = 1 << (pin->id_dev);
-    old = I2CReadReg8(pin->device->i2c_fd, reg);
+    int reg = MCP23x08_IODIR;
+    int mask = 1 << (pin->id_dev);
+    int old = I2CReadReg8(pin->device->i2c_fd, reg);
     switch (mode) {
         case DIO_MODE_OUT:
             old &= (~mask);
@@ -18,10 +17,9 @@ void mcp23008_setMode(Pin *pin, int mode) {
 }
 
 void mcp23008_setPUD(Pin *pin, int pud) {
-    int mask, old, reg;
-    reg = MCP23x08_GPPU;
-    mask = 1 << (pin->id_dev);
-    old = I2CReadReg8(pin->device->i2c_fd, reg);
+    int reg = MCP23x08_GPPU;
+    int mask = 1 << (pin->id_dev);
+    int old = I2CReadReg8(pin->device->i2c_fd, reg);
     switch (pud) {
         case DIO_PUD_UP:
             old |= mask;
@@ -38,8 +36,7 @@ void mcp23008_setPUD(Pin *pin, int pud) {
 //call writeDeviceList() function after this function and then data will be written to chip
 
 void mcp23008_setOut(Pin *pin, int value) {
-    int bit;
-    bit = 1 << (pin->id_dev & 7);
+   int  bit = 1 << (pin->id_dev & 7);
     switch (value) {
         case DIO_LOW:
             pin->device->new_data1 &= (~bit);
@@ -59,21 +56,19 @@ void mcp23008_getIn(Pin *pin) {
 }
 
 void mcp23008_writeDeviceList(DeviceList *list) {
-    int i;
-    for (i = 0; i < list->length; i++) {
-        if (list->item[i].new_data1 != list->item[i].old_data1) {
-            I2CWriteReg8(list->item[i].i2c_fd, MCP23x08_GPIO, list->item[i].new_data1);
-            list->item[i].old_data1 = list->item[i].new_data1;
+    FORLi {
+        if (LIi.new_data1 != LIi.old_data1) {
+            I2CWriteReg8(LIi.i2c_fd, MCP23x08_GPIO, LIi.new_data1);
+            LIi.old_data1 = LIi.new_data1;
         }
     }
 }
 
 void mcp23008_readDeviceList(DeviceList *list, PinList *pl) {
-    int i, j;
-    for (i = 0; i < list->length; i++) {
+    FORLi {
         if (list->item[i].read1) {
             int value = I2CReadReg8(list->item[i].i2c_fd, MCP23x08_GPIO);
-            for (j = 0; j < pl->length; j++) {
+            FORLISTP(pl, j) {
                 if (pl->item[j].device->id == list->item[i].id && pl->item[j].mode == DIO_MODE_IN) {
                     int mask = 1 << (pl->item[j].id_dev & 7);
                     if ((value & mask) == 0) {
@@ -91,49 +86,49 @@ void mcp23008_readDeviceList(DeviceList *list, PinList *pl) {
 }
 
 int mcp23008_checkData(DeviceList *dl, PinList *pl) {
-    for (int i = 0; i < pl->length; i++) {
+    int success=1;
+    FORLISTP(pl, i) {
         if (pl->item[i].id_dev < 0 || pl->item[i].id_dev >= MCP23008_DEVICE_PIN_NUM) {
             fprintf(stderr, "%s(): bad id_within_device where net_id = %d\n",F, pl->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (pl->item[i].device == NULL) {
             fprintf(stderr, "%s(): no device assigned to pin where net_id = %d\n",F, pl->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (pl->item[i].mode != DIO_MODE_IN && pl->item[i].mode != DIO_MODE_OUT) {
             fprintf(stderr, "%s(): bad mode where net_id = %d\n",F, pl->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (pl->item[i].pud != DIO_PUD_OFF && pl->item[i].pud != DIO_PUD_UP) {
             fprintf(stderr, "%s(): bad PUD where net_id = %d (up or off expected)\n",F, pl->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (pl->item[i].pwm.period.tv_sec < 0 || pl->item[i].pwm.period.tv_nsec < 0) {
             fprintf(stderr, "%s(): bad pwm_period where net_id = %d\n",F, pl->item[i].net_id);
-            return 0;
+            success= 0;
         }
         if (pl->item[i].pwm.resolution < 0) {
             fprintf(stderr, "%s(): bad resolution where net_id = %d\n", F,pl->item[i].net_id);
-            return 0;
+            success= 0;
         }
     }
-    for (int i = 0; i < pl->length; i++) {
-        for (int j = i + 1; j < pl->length; j++) {
+    FORLISTP(pl, i) {
+        FORLISTPL ( pl, i, j ) {
             if (pl->item[i].net_id == pl->item[j].net_id) {
                 fprintf(stderr, "%s(): net_id is not unique where net_id = %d\n",F, pl->item[i].net_id);
-                return 0;
+                success= 0;
             }
         }
     }
-    for (int i = 0; i < pl->length; i++) {
-        for (int j = i + 1; j < pl->length; j++) {
+    FFORLISTPL ( pl,i, j ) {
             if (pl->item[i].id_dev == pl->item[j].id_dev && pl->item[i].device->id == pl->item[j].device->id) {
                 fprintf(stderr, "%s(): id_within_device is not unique where net_id = %d\n",F, pl->item[i].net_id);
-                return 0;
+                success= 0;
             }
         }
     }
-    return 1;
+    return success;
 }
 
 void mcp23008_setPtf() {
@@ -152,7 +147,7 @@ int mcp23008_initDevPin(DeviceList *dl, PinList *pl, const char *db_path) {
 #endif
         return 0;
     }
-    for (int i = 0; i < dl->length; i++) {
+    FORLISTP(dl, i) {
         dl->item[i].i2c_fd = I2COpen(dl->item[i].i2c_path, dl->item[i].i2c_addr);
         if (dl->item[i].i2c_fd == -1) {
 #ifdef MODE_DEBUG

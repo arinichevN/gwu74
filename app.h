@@ -21,8 +21,6 @@ extern void freeApp();
 
 extern void exit_nicely();
 
-extern void exit_nicely_e(char *s);
-
 extern int readSettings();
 
 extern void serverRun(int *state, int init_state);
@@ -31,7 +29,7 @@ extern void *threadFunction(void *arg);
 
 extern int createThread_ctl();
 
-extern void initApp();
+extern int initApp();
 
 #endif
 

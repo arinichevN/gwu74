@@ -44,6 +44,7 @@ int readSettings ( TSVresult* r, const char *data_path, int *port, struct timesp
     char *_device_name = TSVgetvalues ( r, 0, "device_name" );
     char *_db_data_path = TSVgetvalues ( r, 0, "db_data_path" );
     if ( TSVnullreturned ( r ) ) {
+        TSVclear ( &config_tsv );
         return 0;
     }
     *port = _port;
@@ -54,20 +55,26 @@ int readSettings ( TSVresult* r, const char *data_path, int *port, struct timesp
     return 1;
 }
 
-void initApp() {
+int initApp() {
     if ( !readSettings ( &config_tsv, CONFIG_FILE, &sock_port, &cycle_duration, &device_name, &db_data_path ) ) {
-        exit_nicely_e ( "initApp: failed to read settings\n" );
+        putsde ( "failed to read settings\n" );
+        return 0;
     }
 #ifdef MODE_DEBUG
     printf ( "%s(): \n\tsock_port: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tdevice_name: %s, \n\tdb_data_path: %s\n", F, sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec, device_name, db_data_path );
 #endif
     if ( !initServer ( &sock_fd, sock_port ) ) {
-        exit_nicely_e ( "initApp: failed to initialize udp server\n" );
+        TSVclear ( &config_tsv );
+        putsde ( "failed to initialize udp server\n" );
+        return 0;
     }
     if ( !initClient ( &sock_fd_tf, WAIT_RESP_TIMEOUT ) ) {
-        exit_nicely_e ( "initApp: failed to initialize udp client\n" );
+        freeSocketFd ( &sock_fd );
+        TSVclear ( &config_tsv );
+        putsde ( "failed to initialize udp client\n" );
+        return 0;
     }
-
+    return 1;
 }
 
 int initData() {
@@ -115,9 +122,9 @@ void serverRun ( int *state, int init_state ) {
         return;
     }
     if ( ACP_CMD_IS ( ACP_CMD_PROG_GET_DATA_INIT ) ) {
-        for ( int i = 0; i < i1l.length; i++ ) {
+        FORLISTN(i1l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i1l.item[i])
+            GET_PIN ( p, &pin_list, i1l.item[i] )
             if ( p != NULL ) {
                 int done = 0;
                 if ( lockPD ( &pin_list.item[i] ) ) {
@@ -130,9 +137,9 @@ void serverRun ( int *state, int init_state ) {
             }
         }
     } else if ( ACP_CMD_IS ( ACP_CMD_GET_FTS ) ) {
-        for ( int i = 0; i < i1l.length; i++ ) {
+        FORLISTN(i1l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i1l.item[i])
+            GET_PIN ( p, &pin_list, i1l.item[i] )
             if ( p != NULL ) {
                 if ( p->mode == DIO_MODE_IN ) {
                     getIn ( p );
@@ -143,9 +150,9 @@ void serverRun ( int *state, int init_state ) {
             readDeviceList ( &device_list, &pin_list );
             unlockPDAll ( &device_list, &pin_list );
         }
-        for ( int i = 0; i < i1l.length; i++ ) {
+        FORLISTN(i1l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i1l.item[i])
+            GET_PIN ( p, &pin_list, i1l.item[i] )
             if ( p != NULL ) {
                 int done = 0;
                 if ( lockPD ( &pin_list.item[i] ) ) {
@@ -158,9 +165,9 @@ void serverRun ( int *state, int init_state ) {
             }
         }
     } else if ( ACP_CMD_IS ( ACP_CMD_PROG_GET_ERROR ) ) {
-        for ( int i = 0; i < i1l.length; i++ ) {
+        FORLISTN(i1l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i1l.item[i])
+            GET_PIN ( p, &pin_list, i1l.item[i] )
             if ( p != NULL ) {
                 int done = 0;
                 if ( lockPD ( &pin_list.item[i] ) ) {
@@ -173,9 +180,9 @@ void serverRun ( int *state, int init_state ) {
             }
         }
     } else if ( ACP_CMD_IS ( ACP_CMD_GWU74_GET_OUT ) ) {
-        for ( int i = 0; i < i1l.length; i++ ) {
+        FORLISTN(i1l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i1l.item[i])
+            GET_PIN ( p, &pin_list, i1l.item[i] )
             if ( p != NULL ) {
                 int done = 0;
                 if ( lockPin ( &pin_list.item[i] ) ) {
@@ -189,9 +196,9 @@ void serverRun ( int *state, int init_state ) {
         }
 
     } else if ( ACP_CMD_IS ( ACP_CMD_SET_INT ) ) {
-        for ( int i = 0; i < i2l.length; i++ ) {
+        FORLISTN(i2l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i2l.item[i].p0)
+            GET_PIN ( p, &pin_list, i2l.item[i].p0 )
             if ( p != NULL ) {
                 if ( lockPin ( p ) ) {
                     setPinOutput ( p, i2l.item[i].p1 );
@@ -202,9 +209,9 @@ void serverRun ( int *state, int init_state ) {
         }
         return;
     } else if ( ACP_CMD_IS ( ACP_CMD_SET_FLOAT ) ) {
-        for ( int i = 0; i < i2l.length; i++ ) {
+        FORLISTN(i2l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i2l.item[i].p0)
+            GET_PIN ( p, &pin_list, i2l.item[i].p0 )
             if ( p != NULL ) {
                 if ( lockPin ( p ) ) {
                     setPinPWMDutyCycle ( p, i2l.item[i].p1 );
@@ -215,36 +222,36 @@ void serverRun ( int *state, int init_state ) {
         }
         return;
     } else if ( ACP_CMD_IS ( ACP_CMD_SET_PWM_PERIOD ) ) {
-        for ( int i = 0; i < i2l.length; i++ ) {
+        FORLISTN(i2l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i2l.item[i].p0)
+            GET_PIN ( p, &pin_list, i2l.item[i].p0 )
             if ( p != NULL ) {
                 setPinPWMPeriod ( p, i2l.item[i].p1, db_data_path );
             }
         }
         return;
     } else if ( ACP_CMD_IS ( ACP_CMD_SET_PWM_DUTY_CYCLE_MIN ) ) {
-        for ( int i = 0; i < i2l.length; i++ ) {
+        FORLISTN(i2l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i2l.item[i].p0)
+            GET_PIN ( p, &pin_list, i2l.item[i].p0 )
             if ( p != NULL ) {
                 setPinPWMDutyCycleMin ( p, i2l.item[i].p1, db_data_path );
             }
         }
         return;
     } else if ( ACP_CMD_IS ( ACP_CMD_SET_PWM_DUTY_CYCLE_MAX ) ) {
-        for ( int i = 0; i < i2l.length; i++ ) {
+        FORLISTN(i2l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i2l.item[i].p0)
+            GET_PIN ( p, &pin_list, i2l.item[i].p0 )
             if ( p != NULL ) {
                 setPinPWMDutyCycleMax ( p, i2l.item[i].p1, db_data_path );
             }
         }
         return;
     } else if ( ACP_CMD_IS ( ACP_CMD_SET_PWM_RESOLUTION ) ) {
-        for ( int i = 0; i < i2l.length; i++ ) {
+        FORLISTN(i2l, i) {
             Pin *p;
-            GET_PIN(p, &pin_list, i2l.item[i].p0)
+            GET_PIN ( p, &pin_list, i2l.item[i].p0 )
             if ( p != NULL ) {
                 setPinPWMResolution ( p, i2l.item[i].p1, db_data_path );
             }
@@ -255,17 +262,17 @@ void serverRun ( int *state, int init_state ) {
 }
 
 void updateOutSafe ( PinList *list ) {
-    for ( int i = 0; i < list->length; i++ ) {
-        if ( lockPD ( &pin_list.item[i] ) ) {
-            switch ( list->item[i].mode ) {
+    FORLi {
+        if ( lockPD ( &LIi ) ) {
+            switch ( LIi.mode ) {
             case DIO_MODE_IN:
                 break;
             case DIO_MODE_OUT:
-                setOut ( &list->item[i], DIO_HIGH );
-                list->item[i].out = DIO_HIGH;
+                setOut ( &LIi, DIO_HIGH );
+                LIi.out = DIO_HIGH;
                 break;
             }
-            unlockPD ( &pin_list.item[i] );
+            unlockPD ( &LIi );
         }
     }
 }
@@ -275,7 +282,7 @@ void *threadFunction ( void *arg ) {
 #ifndef MODE_DEBUG
     // setPriorityMax(SCHED_FIFO);
 #endif
-    for ( int i = 0; i < pin_list.length; i++ ) {
+    FORLISTN(pin_list, i)  {
         if ( lockPD ( &pin_list.item[i] ) ) {
             setMode ( &pin_list.item[i], pin_list.item[i].mode );
             setPUD ( &pin_list.item[i], pin_list.item[i].pud );
@@ -290,7 +297,7 @@ void *threadFunction ( void *arg ) {
 #endif
     while ( 1 ) {
         struct timespec t1 = getCurrentTime();
-        for ( int i = 0; i < pin_list.length; i++ ) {
+        FORLISTN(pin_list, i) {
             if ( pin_list.item[i].mode == DIO_MODE_OUT ) {
                 if ( lockPin ( &pin_list.item[i] ) ) {
                     if ( needSecure ( &pin_list.item[i].secure_out ) ) {
@@ -334,13 +341,13 @@ int initDevice ( DeviceList *dl, PinList *pl, char *device ) {
         done = idle_initDevPin ( dl, pl, db_data_path );
     }
     if ( done ) {
-        for ( int i = 0; i < pl->length; i++ ) {
+        FORLISTP(pl, i)  {
             done = done && initMutex ( &pl->item[i].mutex );
             if ( !done ) {
                 break;
             }
         }
-        for ( int i = 0; i < dl->length; i++ ) {
+        FORLISTP(dl, i) {
             done = done && initMutex ( &dl->item[i].mutex );
             if ( !done ) {
                 break;
@@ -363,25 +370,15 @@ void freeApp() {
     TSVclear ( &config_tsv );
 }
 
-void exit_nicely() {
+void exit_nicely ( ) {
     freeApp();
-#ifdef MODE_DEBUG
-    puts ( "\nBye..." );
-#endif
+    putsdo ( "\nexiting now...\n" );
     exit ( EXIT_SUCCESS );
-}
-
-void exit_nicely_e ( char *s ) {
-    fprintf ( stderr, "%s", s );
-    freeApp();
-    exit ( EXIT_FAILURE );
 }
 
 int main ( int argc, char** argv ) {
     if ( geteuid() != 0 ) {
-#ifdef MODE_DEBUG
-        fprintf ( stderr, "%s: root user expected\n", APP_NAME_STR );
-#endif
+        putsde ( "root user expected\n" );
         return ( EXIT_FAILURE );
     }
 #ifndef MODE_DEBUG
@@ -389,22 +386,18 @@ int main ( int argc, char** argv ) {
 #endif
     conSig ( &exit_nicely );
     if ( mlockall ( MCL_CURRENT | MCL_FUTURE ) == -1 ) {
-#ifdef MODE_DEBUG
-        fprintf ( stderr, "%s(): ", __func__ );
-        perror ( "mlockall()" );
-#endif
+        perrorl ( "mlockall()" );
     }
-#ifndef MODE_DEBUG
-    //  setPriorityMax(SCHED_FIFO);
-#endif
     int data_initialized = 0;
     while ( 1 ) {
 #ifdef MODE_DEBUG
-        printf ( "%s(): %s %d\n", __func__, getAppState ( app_state ), data_initialized );
+        printf ( "%s(): %s %d\n", F, getAppState ( app_state ), data_initialized );
 #endif
         switch ( app_state ) {
         case APP_INIT:
-            initApp();
+            if ( !initApp() ) {
+                return ( EXIT_FAILURE );
+            }
             app_state = APP_INIT_DATA;
             break;
         case APP_INIT_DATA:
@@ -430,8 +423,9 @@ int main ( int argc, char** argv ) {
             exit_nicely();
             break;
         default:
-            exit_nicely_e ( "main: unknown application state" );
-            break;
+            freeApp();
+            putsde ( "unknown application state\n" );
+            return ( EXIT_FAILURE );
         }
     }
     freeApp();
